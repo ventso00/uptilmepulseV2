@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { consumeRateLimit } from "../auth/rateLimit";
 import { statusPageUpsertSchema } from "@shared/contracts";
 import { asyncHandler, requireUser, sendError } from "../_core/http";
+import { isDuplicateKeyError } from "../_core/db-error";
 import { buildPublicStatusPayload } from "./analysis";
 
 /** Matches statusPageSlugSchema in the shared contracts. */
@@ -122,8 +123,7 @@ export function registerStatusPageRoutes(app: Express): void {
           row = created[0];
         }
       } catch (error) {
-        const code = (error as { code?: string }).code;
-        if (code === "ER_DUP_ENTRY")
+        if (isDuplicateKeyError(error))
           return sendError(
             res,
             409,

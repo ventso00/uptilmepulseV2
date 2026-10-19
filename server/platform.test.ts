@@ -129,6 +129,43 @@ describe("http helpers", () => {
     expect(JSON.stringify(body)).not.toContain("ECONNREFUSED");
   });
 
+  it("keeps the SQL text out of the log when the driver fails behind Drizzle", () => {
+    const json = vi.fn();
+    const status = vi.fn(() => ({ json }));
+    const logged = vi.fn();
+    const spy = vi.spyOn(console, "error").mockImplementation(logged);
+    const driverError = Object.assign(
+      new Error("connect ECONNREFUSED 127.0.0.1:3306"),
+      { code: "ECONNREFUSED" }
+    );
+    // Shape thrown by drizzle 0.44: the code sits on `cause`, the message is SQL.
+    const sql = "insert into `users` (`password_hash`) values ('secret-hash')";
+    const wrapped = Object.assign(
+      new Error(`Failed query: ${sql}\nparams: x`),
+      {
+        query: sql,
+        cause: driverError,
+      }
+    );
+
+    errorHandler(
+      wrapped,
+      { method: "POST", originalUrl: "/api/auth/register" } as Request,
+      { headersSent: false, status } as unknown as Response,
+      vi.fn()
+    );
+
+    expect(status).toHaveBeenCalledWith(503);
+    expect(JSON.stringify(json.mock.calls[0][0])).not.toContain("secret-hash");
+    const line = logged.mock.calls[0][0] as string;
+    expect(JSON.parse(line)).toMatchObject({
+      event: "database_error",
+      code: "ECONNREFUSED",
+    });
+    expect(line).not.toContain("insert into");
+    spy.mockRestore();
+  });
+
   it("returns a generic 500 for unexpected failures", () => {
     const json = vi.fn();
     const status = vi.fn(() => ({ json }));

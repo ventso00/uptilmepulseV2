@@ -1,4 +1,5 @@
 import { and, eq, lte } from "drizzle-orm";
+import { safeErrorMessage } from "../_core/db-error";
 import { incidents, monitors, pingLogs } from "@shared/db/schema";
 import { getDb } from "../db";
 import { performHttpCheck, type CheckPhases } from "./client";
@@ -53,7 +54,7 @@ export async function runMonitorCheck(
         JSON.stringify({
           event: "notification_dispatch_failed",
           incidentId: work.incidentId,
-          message: error instanceof Error ? error.message : "unknown error",
+          message: safeErrorMessage(error, "unknown error"),
         })
       );
     });

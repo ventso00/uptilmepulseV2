@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { qaRuns, type QaRun } from "@shared/db/schema";
+import { isDuplicateKeyError } from "../_core/db-error";
 import type { Database } from "../db";
 import type { QaRunStatus } from "@shared/contracts";
 
@@ -21,7 +22,7 @@ export async function claimRun(
   try {
     await db.insert(qaRuns).values({ kind, periodKey });
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return null;
+    if (isDuplicateKeyError(error)) return null;
     throw error;
   }
   const rows = await db

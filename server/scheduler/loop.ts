@@ -1,4 +1,5 @@
 import { runSchedulerTick } from "./tick";
+import { safeErrorMessage } from "../_core/db-error";
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
@@ -26,8 +27,7 @@ export function startInternalScheduler(
         console.error(
           JSON.stringify({
             event: "scheduler_loop_error",
-            message:
-              error instanceof Error ? error.message : "scheduler tick failed",
+            message: safeErrorMessage(error, "scheduler tick failed"),
           })
         );
       })

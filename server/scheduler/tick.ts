@@ -1,4 +1,5 @@
 import { and, asc, eq, lte } from "drizzle-orm";
+import { safeErrorMessage } from "../_core/db-error";
 import { monitors } from "@shared/db/schema";
 import { getDb } from "../db";
 import { runMonitorCheck } from "../checks/engine";
@@ -40,7 +41,7 @@ export async function runSchedulerTick(): Promise<SchedulerTickResult> {
     console.warn(
       JSON.stringify({
         event: "notification_retry_error",
-        message: error instanceof Error ? error.message : "retry failed",
+        message: safeErrorMessage(error, "retry failed"),
       })
     );
   }
@@ -65,7 +66,7 @@ export async function runSchedulerTick(): Promise<SchedulerTickResult> {
           JSON.stringify({
             event: "monitor_check_failed",
             monitorId: monitor.id,
-            message: error instanceof Error ? error.message : "unknown error",
+            message: safeErrorMessage(error, "unknown error"),
           })
         );
         return false;
@@ -80,7 +81,7 @@ export async function runSchedulerTick(): Promise<SchedulerTickResult> {
     console.warn(
       JSON.stringify({
         event: "retention_sweep_error",
-        message: error instanceof Error ? error.message : "retention failed",
+        message: safeErrorMessage(error, "retention failed"),
       })
     );
   }

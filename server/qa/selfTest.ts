@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { safeErrorMessage } from "../_core/db-error";
 import {
   incidents,
   monitors,
@@ -145,7 +146,7 @@ export const SELF_TEST_CHECKS: SelfTestCheck[] = [
       } catch (error) {
         return {
           ok: false,
-          actual: `Erreur de lecture : ${error instanceof Error ? error.message : "inconnue"}.`,
+          actual: `Erreur de lecture : ${safeErrorMessage(error, "inconnue")}.`,
           findings: [],
         };
       }
@@ -489,7 +490,7 @@ export async function runSelfTest(
     } catch (error) {
       outcome = {
         ok: false,
-        actual: `Test impossible : ${error instanceof Error ? error.message : "erreur inconnue"}.`,
+        actual: `Test impossible : ${safeErrorMessage(error, "erreur inconnue")}.`,
         findings: [],
       };
     }
@@ -501,7 +502,7 @@ export async function runSelfTest(
           JSON.stringify({
             event: "qa_self_test_ticket_error",
             checkId: check.id,
-            message: error instanceof Error ? error.message : "unknown",
+            message: safeErrorMessage(error, "unknown"),
           })
         );
         return null;
@@ -581,7 +582,7 @@ export async function maybeRunSelfTest(
     console.warn(
       JSON.stringify({
         event: "qa_self_test_error",
-        message: error instanceof Error ? error.message : "self test failed",
+        message: safeErrorMessage(error, "self test failed"),
       })
     );
     return null;

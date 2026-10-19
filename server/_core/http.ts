@@ -6,6 +6,7 @@ import type {
 } from "express";
 import { getApplicationUser } from "../auth/session";
 import { isOwnerEmail } from "../auth/owner";
+import { driverErrorCode, safeErrorMessage } from "./db-error";
 import type { User } from "@shared/db/schema";
 
 /**
@@ -104,9 +105,7 @@ const DATABASE_HINTS = [
 ];
 
 function isDatabaseError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const code = (error as NodeJS.ErrnoException).code ?? "";
-  return DATABASE_HINTS.includes(code);
+  return DATABASE_HINTS.includes(driverErrorCode(error));
 }
 
 /**
@@ -135,7 +134,7 @@ function parserStatus(error: unknown): number | null {
 export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   if (res.headersSent) return next(error);
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message = safeErrorMessage(error, "request failed");
 
   const rejected = parserStatus(error);
   if (rejected === 413)
@@ -153,7 +152,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
       JSON.stringify({
         event: "database_error",
         path: req.originalUrl,
-        code: (error as NodeJS.ErrnoException).code,
+        code: driverErrorCode(error),
         message,
       })
     );

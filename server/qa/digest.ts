@@ -1,4 +1,5 @@
 import { and, asc, eq, gt, gte, inArray, lt } from "drizzle-orm";
+import { safeErrorMessage } from "../_core/db-error";
 import {
   qaTickets,
   statusPages,
@@ -168,7 +169,7 @@ async function publicPageCheck(
   } catch (error) {
     return {
       ok: false,
-      line: `Génération de la page publique impossible : ${error instanceof Error ? error.message : "erreur inconnue"}.`,
+      line: `Génération de la page publique impossible : ${safeErrorMessage(error, "erreur inconnue")}.`,
     };
   }
 }
@@ -395,7 +396,7 @@ export async function maybeRunDailyDigest(
     console.warn(
       JSON.stringify({
         event: "qa_daily_digest_error",
-        message: error instanceof Error ? error.message : "digest failed",
+        message: safeErrorMessage(error, "digest failed"),
       })
     );
     return null;

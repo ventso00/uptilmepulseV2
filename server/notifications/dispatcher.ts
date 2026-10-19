@@ -7,6 +7,7 @@ import {
   pingLogs,
 } from "@shared/db/schema";
 import { getDb } from "../db";
+import { isDuplicateKeyError, safeErrorMessage } from "../_core/db-error";
 import { decryptTelegramConfig } from "./crypto";
 import { sendTelegramMessage } from "./telegram";
 
@@ -78,10 +79,9 @@ async function deliverExisting(
       );
       return;
     } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error.message.replace(/[\r\n]+/g, " ").slice(0, 500)
-          : "Delivery failed";
+      lastError = safeErrorMessage(error, "Delivery failed")
+        .replace(/[\r\n]+/g, " ")
+        .slice(0, 500);
       await db
         .update(notificationDeliveries)
         .set({
@@ -99,18 +99,6 @@ async function deliverExisting(
       status: "failed",
       attempts: previousAttempts + 3,
     })
-  );
-}
-
-function isDuplicateKeyError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const code = (error as NodeJS.ErrnoException).code ?? "";
-  // ER_DUP_ENTRY is MySQL/MariaDB; the string codes cover proxies and pools
-  // that flatten the driver error.
-  return (
-    code === "ER_DUP_ENTRY" ||
-    code === "23505" ||
-    error.message.includes("Duplicate entry")
   );
 }
 
@@ -138,7 +126,7 @@ async function createDelivery(
           event: "notification_delivery_insert_failed",
           incidentId: event.incidentId,
           channelId: channel.id,
-          message: error instanceof Error ? error.message : "unknown error",
+          message: safeErrorMessage(error),
         })
       );
       throw error;
