@@ -16,7 +16,13 @@ Les mots de passe utilisent bcrypt. Les sessions sont opaques, expirables, révo
 
 ## Secrets
 
-La clé serveur `UPTIMEPULSE_ENCRYPTION_KEY` sera fournie via les secrets protégés Webdev avant l’activation de Telegram. Les tokens et chat IDs sont chiffrés avant persistance et ne sortent jamais dans l’UI, les réponses d’API, les captures ou le dépôt. `.env*` reste ignoré par Git ; les exemples documentent uniquement des placeholders.
+La clé serveur `UPTIMEPULSE_ENCRYPTION_KEY` se fournit par variable
+d'environnement : un `.env` local hors dépôt en développement, un secret de
+l'orchestrateur en déploiement (`.dockerignore:4-5` exclut `.env` et `.env.*` de
+l'image, donc le conteneur ne peut la recevoir que par `--env-file` ou
+équivalent). Les tokens et chat IDs sont chiffrés avant persistance et ne sortent
+jamais dans l'UI, les réponses d'API, les captures ou le dépôt. `.env*` reste
+ignoré par Git ; les exemples ne documentent que des placeholders.
 
 **Rotation.** Cette clé dérive la clé AES-256-GCM par SHA-256. La changer rend chaque token Telegram stocké définitivement indéchiffrable, sans mécanisme de récupération : il faut alors supprimer et recréer les canaux. La conserver dans un gestionnaire de secrets, jamais dans un fichier du dépôt.
 
@@ -28,17 +34,30 @@ cookie et la connexion devient impossible. Le déploiement doit donc être servi
 en TLS dès le premier jour, et le proxy doit exposer `X-Forwarded-Proto` pour que
 l’application interprète correctement la requête.
 
-Le limiter de débit est en mémoire et propre à chaque instance : une
+Le limiteur de débit est en mémoire et propre à chaque instance : un
 déploiement horizontal donne à chaque réplique son propre budget. Passer à un
 stockage partagé avant de mettre en service plusieurs instances.
 
 ## Point de vigilance
 
-Le scheduler est protégé par un JWT signé (`MANUS_JWT_SECRET`) portant un `appId`
-et une identité `cron_`. Toute personne détenant ce cookie peut déclencher un
-lot de checks. Ce secret est aussi utilisé pour signer les sessions applicatives
-— le compromettre expose donc les deux surfaces. Le faire tourner périodiquement
-et le traiter comme une donnée de production.
+Le endpoint du scheduler (`POST /api/scheduled/checks`) est protégé par un **JWT
+porteur** signé en HS256 avec `MANUS_JWT_SECRET`, contrôlé sur `appId` et sur une
+identité préfixée `cron_` (`server/scheduler/heartbeatAuth.ts:12-21`). Quiconque
+détient ce secret peut mint un jeton et déclencher des lots de checks ; le jeton
+lui-même se présente en en-tête `Authorization`, jamais en cookie.
+
+Ce que la rotation de `MANUS_JWT_SECRET` atteint, et ce qu'elle n'atteint pas :
+
+- elle révoque les jetons machine déjà émis, et coupe la sphère OAuth de la
+  plateforme (`server/_core/sdk.ts:162-163` lit la même valeur) ;
+- elle **ne touche pas aux sessions applicatives** : le cookie
+  `uptimepulse_session` porte un jeton opaque `randomBytes(32)`, stocké sous
+  forme de son SHA-256 et validé en base (`server/auth/session.ts:8-22`), sans
+  signature. Faire tourner `MANUS_JWT_SECRET` ne déconnecte donc personne.
+
+Traiter la valeur comme une donnée de production : elle n'a rien à faire dans un
+fichier du dépôt, et son absence désactive simplement la sphère plateforme sans
+casser le produit.
 
 ## Signalement
 
