@@ -126,7 +126,7 @@ node dist/index.js
 
 C'est exactement l'état des `node_modules` du stage runtime, qui installe avec
 `--prod` (`Dockerfile:35`) : `vite` est déclaré en `devDependencies`
-(`package.json:56,75`), donc absent. Le bundle, lui, l'importait au niveau
+(`package.json:47,63`), donc absent. Le bundle, lui, l'importait au niveau
 supérieur, et Node évalue tous les `import` statiques avant la première ligne
 exécutée — peu importe que la branche `serveStatic` soit celle qui tourne. Les
 trois paquets venaient de `vite.config.ts`, importé en dur par

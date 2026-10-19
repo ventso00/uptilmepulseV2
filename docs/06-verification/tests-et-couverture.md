@@ -20,7 +20,7 @@ Un **seul projet vitest**, sans fichier `vitest.workspace.*` ni clé `projects`
 | Alias `@shared` | → `shared/`                                                                                | `vitest.config.ts:11`                      |
 | Globs `include` | `server/**`, `shared/**` (`.test.ts`/`.spec.ts`) + `client/src/lib/**/*.test.ts` seulement | `vitest.config.ts:18-26`                   |
 
-- **Pas de jsdom** : aucune dépendance jsdom dans `package.json:21-77`,
+- **Pas de jsdom** : aucune dépendance jsdom dans `package.json:21-65`,
   aucun environnement `jsdom` dans la config. Conséquence : **aucun test de
   rendu React n'est possible ni présent** ; le commentaire de la config
   l'assume : seuls entrent les modules client « browser-free », « rendering
@@ -207,17 +207,17 @@ reste est jamais exécuté par `pnpm test`.
   `server/_core/trpc.ts` (`protectedProcedure:28`, `adminProcedure:30`),
   `server/_core/systemRouter.ts` (`:5`), `server/routers.ts` (12 lignes),
   `server/_core/env.ts` (`ENV:2`), `server/_core/heartbeat.ts`
-  (`createHeartbeatJob:140`…), `server/_core/notification.ts`
+  (`createHeartbeatJob:131`…), `server/_core/notification.ts`
   (`notifyOwner:64`), `server/_core/oauth.ts` (`registerOAuthRoutes:18`),
-  `server/_core/types/*`.
+  `server/_core/types/manusTypes.ts`.
 
 ### Routes HTTP — 45 handlers enregistrés, 0 exercé
 
 Total des `app.get/post/patch/put/delete` : `monitors/routes.ts` 9,
 `auth/routes.ts` 5, `notifications/routes.ts` 4, `admin/routes.ts` 7,
 `qa/routes.ts` 12, `statuspages/routes.ts` 4, `scheduler/routes.ts` 1,
-`routes/dashboard.ts` 1, `_core/index.ts` 2. Aucun test ne fait de requête
-HTTP (pas de supertest dans `package.json:21-55`). Nuance importante :
+`dashboard/routes.ts` 1, `_core/index.ts` 2. Aucun test ne fait de requête
+HTTP (pas de supertest dans `package.json:21-46`). Nuance importante :
 `server/qa/routes.test.ts` n'appelle que `requestOrigin`
 (`server/qa/routes.ts:50`) ; `registerQaRoutes` (`:156`) et les 11 autres
 endpoints QA ne sont pas touchés. **Testé au niveau fonction mais pas au
@@ -227,8 +227,9 @@ uptime (`stats.test.ts` vs `monitors/routes.ts`), maths de statut
 ne fait que « miroiter » le payload, commentaire `shared/contracts.test.ts:400-403`),
 machine à incidents (`state.test.ts` vs son appelant `checks/engine.ts:26`),
 plans (`service.test.ts` vs `admin/routes.ts` + `plans/respond.ts:13`
-`respondPlanError` jamais importé), limites digest (`digest.test.ts:37` vs
-`buildDailyDigest:214`, `lastDailyDigest:334`, `maybeRunDailyDigest:378`),
+`respondPlanError` jamais importé), limites digest — `digest.test.ts` n'attaque que
+`digestPeriodKey:38`, tandis que `buildDailyDigest:214`,
+`lastDailyDigest:334` et `maybeRunDailyDigest:378` restent sans test),
 ledger (`runs.test.ts` ne teste que `parseDetail:67` ; `claimRun:17`,
 `finishRun:36`, `latestRun:52` non testés).
 
@@ -267,16 +268,17 @@ politique de mot de passe n'est verrouillée que côté schéma zod
 43 des 44 fichiers de `client/src` sont hors de portée des globs
 (`vitest.config.ts:18-26`) : les 11 pages, les 23 composants (dont
 `ErrorBoundary.tsx`, `status/StatusAnalytics.tsx`, `qa/QaTicketDetail.tsx`),
-les 4 hooks (dont `useAutoRefresh.ts`), `contexts/ThemeContext.tsx`,
-`App.tsx`/`main.tsx`, `lib/api.ts` (438 lignes : tout le parsing des
+les 3 hooks (dont `useAutoRefresh.ts`), `contexts/ThemeContext.tsx`,
+`App.tsx`/`main.tsx`, `lib/api.ts` (431 lignes : tout le parsing des
 réponses par les contrats zod, jamais exécuté sous vitest) et `lib/utils.ts`.
 Seul `lib/qaContext.ts` est testé, précisément parce que sans DOM
 (`vitest.config.ts:23-25`).
 
 ### Shared et schéma
 
-`shared/_core/errors.ts` (`HttpError:5`, usines 400/401/403/404 `:16-19`) et
-`shared/db/relations.ts` ne sont jamais importés par un test. De
+`shared/_core/errors.ts` (`HttpError:5`, `ForbiddenError:15`) n'est jamais
+importé par un test — seul `server/_core/sdk.ts` s'en sert, sur quatre
+`throw`. De
 `shared/db/schema.ts` seule la liste `checkClassificationValues` est épinglée
 (`shared/contracts.test.ts:2,873-879`) ; colonnes, index et relations ne sont
 testés nulle part.

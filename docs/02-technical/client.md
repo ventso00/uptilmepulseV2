@@ -73,7 +73,7 @@ le dépôt — voir §10.2.
 
 ## 2. Le contrat de typage bout-en-bout (`client/src/lib/api.ts`)
 
-### 2.1 Mécanique (439 lignes)
+### 2.1 Mécanique (431 lignes)
 
 - Tous les schémas zod viennent de `@shared/contracts`, importés
   ligne 3–49. Rien n'est redéclaré localement : le client et le
@@ -98,13 +98,15 @@ le dépôt — voir §10.2.
   `UnauthorizedError` (401, « Session expirée ») ligne 92–98 ;
   `firstIssue()` fabrique le message « Réponse serveur invalide
   (path) » à partir de la première erreur zod, ligne 100–107.
-- Lecture typée : `apiRequest` (ligne 176–182). Écritures sans corps
-  de réponse : `apiRequestUntyped` → `requestNoContent`
-  (ligne 184–228) — utilisé par pause/resume du monitor
-  (`Dashboard.tsx:458–473, 572–579`).
-- Helpers présentation : `errorMessage` (ligne 412–416),
-  `formatRelativeDate` en français (ligne 418–430),
-  `formatDuration` (ligne 432–438).
+- Lecture typée : `request<T>()` lui-même (ligne 114–174), appelé
+  directement par chaque méthode de l'objet `api`. L'alias exporté
+  `apiRequest` qui le doublait n'avait aucun importateur ; il a été
+  supprimé. Écritures sans corps de réponse : `apiRequestUntyped` →
+  `requestNoContent` (ligne 176–220) — utilisé par pause/resume du
+  monitor (`Dashboard.tsx:458–473, 572–579`).
+- Helpers présentation : `errorMessage` (ligne 404–408),
+  `formatRelativeDate` en français (ligne 410–422),
+  `formatDuration` (ligne 424–430).
 
 ### 2.2 tRPC : absent, vérifié
 
@@ -112,19 +114,21 @@ Vérifié par grep sur tout `client/src` : `@trpc`, `superjson` et
 `QueryClient` n'apparaissent nulle part sauf dans le commentaire
 historique `main.tsx:6–11`. Le client n'appelle PAS tRPC : tout passe
 par le REST typé de `api.ts`. Les packages `@trpc/server`
-(`package.json:30`) et `superjson` (`package.json:50`) restent déclarés
-sans consommateur côté client (§10.1).
+(`package.json:23`) et `superjson` (`package.json:42`) restent déclarés
+sans consommateur côté client — mais le serveur, lui, les importe :
+ce sont des dépendances de service, pas des orphelins à supprimer
+(§10.1).
 
-### 2.3 L'objet `api` (ligne 230–410)
+### 2.3 L'objet `api` (ligne 222–402)
 
 | Domaine                  | Méthodes (ligne)                                                                                                                                                                                                                                   |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Compte                   | `me` 231 ; `login` 232–236 ; `register` 237–241 ; `logout` 242                                                                                                                                                                                     |
-| Monitors                 | `dashboard` 243 ; `monitor` 244–245 ; `history` 246–253 (pagination par curseur) ; `incidents` 254–255 ; `runCheck` 256–259                                                                                                                        |
-| Alertes & page de statut | `channels` 260 ; `createChannel` 261–269 ; `deleteChannel` 270–273 ; `testChannel` 274–281 ; `statusPage` 282 ; `saveStatusPage` 283–291 ; `deleteStatusPage` 292–295 ; `publicStatus` 298–302 (endpoint non authentifié, commentaire 296–297)     |
-| Signalement & support    | `reportIssue` 307–324 (champ piège-mouches `website`) ; `publicTicket` 325–329 ; `publicTicketMessage` 330–335                                                                                                                                     |
-| QA                       | `qaOverview` 336 ; `qaTickets` 337–346 (filtres statut/sévérité/retard) ; `qaTicket` 347–348 ; `updateQaTicket` 349–361 ; `addQaTicketEvent` 362–369 ; `qaTicketReply` 370–377 ; `runQaSelfTests` 378–381 ; `runQaDigest` 382–385 ; `qaDigest` 386 |
-| Plans & admin            | `plans` 390 ; `myPlan` 391 ; `adminOverview` 392–393 ; `adminPlans` 394 ; `createPlan` 395–399 ; `updatePlan` 400–404 ; `assignUserPlan` 405–409                                                                                                   |
+| Compte                   | `me` 223 ; `login` 224–228 ; `register` 229–233 ; `logout` 234                                                                                                                                                                                     |
+| Monitors                 | `dashboard` 235 ; `monitor` 236–237 ; `history` 238–245 (pagination par curseur) ; `incidents` 246–247 ; `runCheck` 248–251                                                                                                                        |
+| Alertes & page de statut | `channels` 252 ; `createChannel` 253–261 ; `deleteChannel` 262–265 ; `testChannel` 266–273 ; `statusPage` 274 ; `saveStatusPage` 275–283 ; `deleteStatusPage` 284–287 ; `publicStatus` 290–294 (endpoint non authentifié, commentaire 288–289)     |
+| Signalement & support    | `reportIssue` 299–316 (champ piège-mouches `website`) ; `publicTicket` 317–321 ; `publicTicketMessage` 322–327                                                                                                                                     |
+| QA                       | `qaOverview` 328 ; `qaTickets` 329–338 (filtres statut/sévérité/retard) ; `qaTicket` 339–340 ; `updateQaTicket` 341–353 ; `addQaTicketEvent` 354–361 ; `qaTicketReply` 362–369 ; `runQaSelfTests` 370–373 ; `runQaDigest` 374–377 ; `qaDigest` 378 |
+| Plans & admin            | `plans` 382 ; `myPlan` 383 ; `adminOverview` 384–385 ; `adminPlans` 386 ; `createPlan` 387–391 ; `updatePlan` 392–396 ; `assignUserPlan` 397–401                                                                                                   |
 
 ---
 
@@ -245,7 +249,7 @@ Fonctionnement de ces 121 lignes :
 - Sensible : commentaire 12 — rien de sensible n'est stocké,
   « no token, no password, no response body ».
 - Consommateurs : `ReportIssueDialog.tsx:40` (capture au rendu,
-  envoyée via `api.reportIssue`, `api.ts:307–324`) ; affichage à
+  envoyée via `api.reportIssue`, `api.ts:299–316`) ; affichage à
   l'équipe dans `QaTicketDetail.tsx:273–340`. Le dialogue explique
   au déclarant ce qui est attaché (277–289).
 - `clearEvidence()` (59) : uniquement appelé par les tests
@@ -318,27 +322,29 @@ refonte du token sémantique.
 | `.field-input`                                    | style des champs (fond surface, focus ring)                                                      | 253–277                              | SupportTicket 360 ; ReportIssueDialog (10 champs)                                                                                                                                                                          |
 | `.auth-input`                                     | input sombre-sur-craie des consoles (voir §7.3)                                                  | 280–308 (+ variante `.dark` 311–330) | Login 52, 64 ; Register 50, 67, 101 ; ET bien au-delà : Dashboard 755, 780, 814, 837, 851 ; Settings 309, 332, 448, 468, 481 ; QaQueue 429, 448 ; AdminConsole 513, 543, 623, 639 ; QaTicketDetail 427, 452, 477, 515, 554 |
 | `.shadow-soft/medium/strong/glow…`                | ombres utilitaires                                                                               | 335–352                              | large                                                                                                                                                                                                                      |
-| `.dotmatrix`                                      | texture pointillée + repli `@supports`                                                           | 391–408                              | Landing 299                                                                                                                                                                                                                |
-| `.hollow-ink`                                     | texte vide au contour (wordmarks)                                                                | 412–421                              | Landing 198 ; SiteFooter 156 ; ClientReadsShowcase 366                                                                                                                                                                     |
-| `.deck-scene/.deck-card/.deck-float/.shadow-deck` | éventail 3D en variables CSS ; éventails en media query 48rem (commentaire « fan-in-CSS-props ») | 423–476                              | HeroDeck 244, 258, 261                                                                                                                                                                                                     |
-| `.grid-paper`                                     | fond quadrillé                                                                                   | 479–502                              | Landing 157, 637 ; Login 176, 189                                                                                                                                                                                          |
-| `.halftone`                                       | trame                                                                                            | 505–514                              | Landing 386 ; ClientReadsShowcase 348 ; Login 193                                                                                                                                                                          |
-| `.circuit-line` + `.wire`                         | fils du hero ; animation `wire-draw` pilotée en JS avec repli reduced-motion                     | 517–533                              | HeroCircuit 95–116, 158                                                                                                                                                                                                    |
-| `.live-ping`                                      | halo pulsé « en direct »                                                                         | 713–729                              | HeroCircuit 179 ; SiteFooter 105 ; PublicStatus 346, 744 ; ProductPreview 196 ; ClientReadsShowcase 122 ; SupportTicket 179 ; Login 224                                                                                    |
-| `.animate-rise`                                   | entrée « au-dessus du fold », délai inline                                                       | 731–747                              | Landing 183, 205, 223, 233, 255 ; ProductPreview 187 ; PublicStatus 448 ; SupportTicket 220, 252, 287, 332, 339 ; ClientReadsShowcase 119, 162, 173, 206                                                                   |
-| `.dash-flow`                                      | connecteur pointillé animé des 3 étapes                                                          | 749–758                              | Landing 347                                                                                                                                                                                                                |
-| `.rail-progress`                                  | barre de temps de défilement (durée mise en inline par la JS)                                    | 760–773                              | ClientReadsShowcase 432                                                                                                                                                                                                    |
-| `.animate-sheen`                                  | balayage de brillance                                                                            | 775–786                              | PublicStatus 337 ; SupportTicket 225 ; ClientReadsShowcase 470                                                                                                                                                             |
-| `.ecg-line`                                       | tracé cœur-de-mémoire dessiné                                                                    | 788–808                              | ClientReadsShowcase 149                                                                                                                                                                                                    |
-| `.uptime-bar`                                     | croissance verticale des barres d'uptime                                                         | 813–829                              | Dashboard 629 ; ClientReadsShowcase 218                                                                                                                                                                                    |
-| `.analysis-segment`                               | segments extensibles horizontaux                                                                 | 831–845                              | HeroDeck 114 ; ProductPreview 245 ; ClientReadsShowcase 258 ; MonitorDetail 624                                                                                                                                            |
-| `.spotlight`                                      | halo radial suivant le pointeur (`color-mix in oklab`)                                           | 864–885                              | ProductPreview 148 ; ClientReadsShowcase 452                                                                                                                                                                               |
-| `.tilt-frame`                                     | inclinaison perspective pilotée par `--tilt-x/y`                                                 | 887–892                              | ProductPreview 148 ; ClientReadsShowcase 452                                                                                                                                                                               |
+| `.dotmatrix`                                      | texture pointillée + repli `@supports`                                                           | 359–376                              | Landing 299                                                                                                                                                                                                                |
+| `.hollow-ink`                                     | texte vide au contour (wordmarks)                                                                | 380–389                              | Landing 198 ; SiteFooter 156 ; ClientReadsShowcase 366                                                                                                                                                                     |
+| `.deck-scene/.deck-card/.deck-float/.shadow-deck` | éventail 3D en variables CSS ; éventails en media query 48rem (commentaire « fan-in-CSS-props ») | 398–444                              | HeroDeck 244, 258, 261                                                                                                                                                                                                     |
+| `.grid-paper`                                     | fond quadrillé                                                                                   | 447–470                              | Landing 157, 637 ; Login 176, 189                                                                                                                                                                                          |
+| `.halftone`                                       | trame                                                                                            | 473–482                              | Landing 386 ; ClientReadsShowcase 348 ; Login 193                                                                                                                                                                          |
+| `.circuit-line` + `.wire`                         | fils du hero ; animation `wire-draw` pilotée en JS avec repli reduced-motion                     | 485–501                              | HeroCircuit 95–116, 158                                                                                                                                                                                                    |
+| `.live-ping`                                      | halo pulsé « en direct »                                                                         | 506–519                              | HeroCircuit 179 ; SiteFooter 105 ; PublicStatus 346, 744 ; ProductPreview 196 ; ClientReadsShowcase 122 ; SupportTicket 179 ; Login 224                                                                                    |
+| `.animate-rise`                                   | entrée « au-dessus du fold », délai inline                                                       | 525–537                              | Landing 183, 205, 223, 233, 255 ; ProductPreview 187 ; PublicStatus 448 ; SupportTicket 220, 252, 287, 332, 339 ; ClientReadsShowcase 119, 162, 173, 206                                                                   |
+| `.dash-flow`                                      | connecteur pointillé animé des 3 étapes                                                          | 540–548                              | Landing 347                                                                                                                                                                                                                |
+| `.rail-progress`                                  | barre de temps de défilement (durée mise en inline par la JS)                                    | 552–563                              | ClientReadsShowcase 432                                                                                                                                                                                                    |
+| `.animate-sheen`                                  | balayage de brillance                                                                            | 565–576                              | PublicStatus 337 ; SupportTicket 225 ; ClientReadsShowcase 470                                                                                                                                                             |
+| `.ecg-line`                                       | tracé cœur-de-mémoire dessiné                                                                    | 581–590                              | ClientReadsShowcase 149                                                                                                                                                                                                    |
+| `.uptime-bar`                                     | croissance verticale des barres d'uptime                                                         | 595–608                              | Dashboard 629 ; ClientReadsShowcase 218                                                                                                                                                                                    |
+| `.analysis-segment`                               | segments extensibles horizontaux                                                                 | 610–624                              | HeroDeck 114 ; ProductPreview 245 ; ClientReadsShowcase 258 ; MonitorDetail 624                                                                                                                                            |
+| `.spotlight`                                      | halo radial suivant le pointeur (`color-mix in oklab`)                                           | 629–647                              | ProductPreview 148 ; ClientReadsShowcase 452                                                                                                                                                                               |
+| `.tilt-frame`                                     | inclinaison perspective pilotée par `--tilt-x/y`                                                 | 649–654                              | ProductPreview 148 ; ClientReadsShowcase 452                                                                                                                                                                               |
 
 Une deuxième famille de classes — `.reveal`, `.parallax-*`, `.glass`,
 `.gradient-border`, `.magnetic`, `.animate-count-up`,
 `.animate-float-ambient`, `.animate-mesh`, `.page-transition-*`,
-`.ecg-sweep` — n'a AUCUN consommateur dans le TSX : détails §10.2.
+`.ecg-sweep` — n'avait AUCUN consommateur dans le TSX : elle a été
+supprimée (284 lignes, §10.2). Le tableau ci-dessus est l'inventaire
+restant, re-mesuré ligne à ligne dans le `index.css` de 675 lignes.
 
 ---
 
@@ -406,7 +412,7 @@ sont OBSOLÈTES : aucun code n'ajoute jamais la classe `.dark`.
 - Contrastes MESURÉS sur pixels réels, pas sur les valeurs de
   variables. Raison technique : Tailwind v4 compile les opacity
   modifiers en `color-mix(in oklab, …)` — visible dans le CSS lui-même
-  (`index.css:247`, 306, 483, 488, 508, 875…) ; une regex `rgba(`
+  (`index.css:247`, 276, 306, 451, 456, 476, 637) ; une regex `rgba(`
   sur le CSS généré ne voit RIEN de ces mélanges et donnerait de
   faux « OK ». La méthode est consignée dans la doc projet :
   « audit de contraste AA mesuré sur pixels réels »
@@ -418,22 +424,22 @@ sont OBSOLÈTES : aucun code n'ajoute jamais la classe `.dark`.
 
 ### 8.2 Ce qui est en place
 
-| Point                                 | Preuve                                                                            | Citation                                                                                                                                                                                                  |
-| ------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lang="fr"`                           | html                                                                              | `index.html:2`                                                                                                                                                                                            |
-| Zoom non bloqué (WCAG 1.4.4)          | `maximum-scale` retiré, commentaire explicite                                     | `index.html:5–7`                                                                                                                                                                                          |
-| Cibles tactiles ≥ 44 px               | `min-h-12` (48 px) et `h-11`/`min-h-11` (44 px)                                   | Landing 238, 247 ; Login 90 ; Register 116 ; ProductPreview 169 ; ClientReadsShowcase 397 ; SiteFooter 139, 267                                                                                           |
-| `prefers-reduced-motion`              | bloc global tue transitions/animations + neutralise tilt/spotlight/parallax/float | `index.css:934–958`                                                                                                                                                                                       |
-| reduced-motion en JS                  | valeur finale directe ; écoute du changement À CHAUD                              | `CountUp.tsx:20–23` ; `Reveal.tsx:10–13` ; `HeroCircuit.tsx:95` ; `ProductPreview.tsx:125` ; `ClientReadsShowcase.tsx:311–337` ; `SiteFooter.tsx:258–265` ; `skeleton.tsx` (`motion-reduce:animate-none`) |
-| Focus visible                         | outline 2px `--ring`, offset 3px                                                  | `index.css:240–245`                                                                                                                                                                                       |
-| Trap de focus + Escape + restauration | Modal                                                                             | `Modal.tsx:4–5, 28–65`                                                                                                                                                                                    |
-| Menu accessible                       | `aria-haspopup/expanded`, Escape rend le focus, flèches roving                    | `RowMenu.tsx:12–16, 39–60, 76–86`                                                                                                                                                                         |
-| Graphes nommés                        | `role="img"` + aria-label, ou `aria-hidden` + lecture `sr-only`                   | `HeroCircuit.tsx:124–127` ; `MonitorDetail.tsx:294–300` ; `StatusAnalytics.tsx:176–177, 393–396, 632–635, 238+286–293`                                                                                    |
-| Ancres pas collées au bord            | `scroll-padding-top: 5rem` (SC 2.4.11)                                            | `index.css:200–205`                                                                                                                                                                                       |
-| Sidebar hors écran vraiment cachée    | `aria-hidden` + `inert`                                                           | `AppShell.tsx:52–53, 75–80`                                                                                                                                                                               |
-| Page courante marquée                 | `aria-current`                                                                    | `AppShell.tsx:110–111`                                                                                                                                                                                    |
-| Signalétique au clavier des démos     | lift focus-visible, pause au focus                                                | `HeroDeck.tsx:210–214, 247–258` ; `ClientReadsShowcase.tsx:311–337`                                                                                                                                       |
-| JS désactivée                         | bandeau noscript français                                                         | `index.html:25–27`                                                                                                                                                                                        |
+| Point                                 | Preuve                                                             | Citation                                                                                                                                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lang="fr"`                           | html                                                               | `index.html:2`                                                                                                                                                                                            |
+| Zoom non bloqué (WCAG 1.4.4)          | `maximum-scale` retiré, commentaire explicite                      | `index.html:5–7`                                                                                                                                                                                          |
+| Cibles tactiles ≥ 44 px               | `min-h-12` (48 px) et `h-11`/`min-h-11` (44 px)                    | Landing 238, 247 ; Login 90 ; Register 116 ; ProductPreview 169 ; ClientReadsShowcase 397 ; SiteFooter 139, 267                                                                                           |
+| `prefers-reduced-motion`              | bloc global tue transitions/animations + neutralise tilt/spotlight | `index.css:659–674` ; garde locale `wire-draw` `index.css:495–501`                                                                                                                                        |
+| reduced-motion en JS                  | valeur finale directe ; écoute du changement À CHAUD               | `CountUp.tsx:20–23` ; `Reveal.tsx:10–13` ; `HeroCircuit.tsx:95` ; `ProductPreview.tsx:125` ; `ClientReadsShowcase.tsx:311–337` ; `SiteFooter.tsx:258–265` ; `skeleton.tsx` (`motion-reduce:animate-none`) |
+| Focus visible                         | outline 2px `--ring`, offset 3px                                   | `index.css:240–245`                                                                                                                                                                                       |
+| Trap de focus + Escape + restauration | Modal                                                              | `Modal.tsx:4–5, 28–65`                                                                                                                                                                                    |
+| Menu accessible                       | `aria-haspopup/expanded`, Escape rend le focus, flèches roving     | `RowMenu.tsx:12–16, 39–60, 76–86`                                                                                                                                                                         |
+| Graphes nommés                        | `role="img"` + aria-label, ou `aria-hidden` + lecture `sr-only`    | `HeroCircuit.tsx:124–127` ; `MonitorDetail.tsx:294–300` ; `StatusAnalytics.tsx:176–177, 393–396, 632–635, 238+286–293`                                                                                    |
+| Ancres pas collées au bord            | `scroll-padding-top: 5rem` (SC 2.4.11)                             | `index.css:200–205`                                                                                                                                                                                       |
+| Sidebar hors écran vraiment cachée    | `aria-hidden` + `inert`                                            | `AppShell.tsx:52–53, 75–80`                                                                                                                                                                               |
+| Page courante marquée                 | `aria-current`                                                     | `AppShell.tsx:110–111`                                                                                                                                                                                    |
+| Signalétique au clavier des démos     | lift focus-visible, pause au focus                                 | `HeroDeck.tsx:210–214, 247–258` ; `ClientReadsShowcase.tsx:311–337`                                                                                                                                       |
+| JS désactivée                         | bandeau noscript français                                          | `index.html:25–27`                                                                                                                                                                                        |
 
 ### 8.3 Ce qui MANQUE (vérifié, pas deviné)
 
@@ -485,41 +491,70 @@ no-store` (157–163) et l'ÉMET comme asset au build
 
 ## 10. Ce qui est dormant ou mort côté client
 
-### 10.1 Dépendances déclarées sans consommateur client
+### 10.1 Dépendances sans consommateur client
 
-Vérifiées par grep sur tout `client/src` (et par l'absence de tout
-fichier de config Tailwind/PostCSS) :
+Seize paquets ont été passés au grep sur `client/src`, `server/` et
+`shared/` (plus l'absence de tout fichier de config Tailwind/PostCSS).
 
-| Package                                                                      | Déclaré (package.json) | Consommateur côté client                                                                                                                |
-| ---------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `autoprefixer`                                                               | 64                     | aucun (Tailwind v4 préfixe seul)                                                                                                        |
-| `postcss`                                                                    | 69                     | aucun — pas de `postcss.config.*`                                                                                                       |
-| `tailwindcss-animate`                                                        | 52                     | aucun — remplacé par `tw-animate-css` importé (`index.css:2`)                                                                           |
-| `@tailwindcss/typography`                                                    | 57                     | aucun — zéro classe `prose` dans `client/src` (grep)                                                                                    |
-| `next-themes`                                                                | 45                     | un seul import, `ui/sonner.tsx:1`, qui pointe vers un provider non monté (§7.3)                                                         |
-| `@trpc/server`                                                               | 30                     | aucun (§2.2)                                                                                                                            |
-| `superjson`                                                                  | 50                     | aucun                                                                                                                                   |
-| `axios`                                                                      | 32                     | aucun — le client n'utilise que `fetch` (`api.ts:122–126`)                                                                              |
-| `class-variance-authority`                                                   | 34                     | aucun — zéro appel `cva(` (grep)                                                                                                        |
-| `@radix-ui/react-dialog, -label, -select, -separator, -slot, -switch, -tabs` | 22–28                  | aucun — seul `react-tooltip` (29) est importé (`ui/tooltip.tsx:2`) ; les dialogues sont faits main (`Modal.tsx:7–11`, commentaire §4.1) |
+**Supprimés** (`package.json` et `pnpm-lock.yaml`, 539 lignes de lockfile
+en moins) — aucun import, aucune référence de config, aucun usage
+runtime :
+
+| Paquet                                                                                   | Verdict de la vérification                                                                                                                             |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `autoprefixer`, `postcss`                                                                | aucun — Tailwind v4 préfixe seul, et aucun `postcss.config.*` dans le dépôt                                                                            |
+| `@tailwindcss/typography`                                                                | aucun — zéro classe `prose` dans `client/src`                                                                                                          |
+| `tailwindcss-animate`                                                                    | aucun — remplacé par `tw-animate-css`, importé ligne 2 de `index.css`                                                                                  |
+| `class-variance-authority`                                                               | aucun — zéro appel `cva(`                                                                                                                              |
+| `@radix-ui/react-dialog`, `-label`, `-select`, `-separator`, `-slot`, `-switch`, `-tabs` | aucun — seul `react-tooltip` (`package.json:22`) est importé (`ui/tooltip.tsx:2`) ; les dialogues sont faits main (`Modal.tsx:7–11`, commentaire §4.1) |
+
+**Gardés alors qu'ils sont inertes côté client** — la colonne
+« consommateur » ci-dessous est la raison pour laquelle ils ne doivent
+PAS être supprimés lors d'un prochain ménage :
+
+| Paquet         | Ligne (`package.json`) | Utilisateur réel                                                                                                             |
+| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@trpc/server` | 23                     | serveur : `server/_core/trpc.ts:2`, `context.ts:1`, `index.ts:4`, et `TRPCError` dans `heartbeat.ts:1` / `notification.ts:1` |
+| `superjson`    | 42                     | serveur : `server/_core/trpc.ts:3` (transformer tRPC)                                                                        |
+| `axios`        | 25                     | serveur : `server/_core/sdk.ts:8,37,84` — le client, lui, n'utilise que `fetch` (`api.ts:122–126`)                           |
+| `next-themes`  | 37                     | client : un seul import, `ui/sonner.tsx:1`, vers un provider non monté (§7.3)                                                |
+
+`@trpc/server`, `superjson` et `axios` sont donc des dépendances de
+service, pas des orphelins : le client ne les importe pas (§2.2), mais
+`dist/index.js` sì.
 
 Corroboré par `docs/01-product/cahier-des-charges.md:325` : « Quatre
 dépendances déclarées et non référencées : tailwindcss-animate,
-autoprefixer, postcss, @tailwindcss/typography ».
+autoprefixer, postcss, @tailwindcss/typography » — depuis vérifiées et
+retirées.
 
 ### 10.2 Code client sans consommateur
 
-- `hooks/useScrollReveal.ts` : les 4 hooks `useScrollReveal` (10),
-  `useStaggeredReveal` (57), `useParallax` (120), `useMagnetic` (147)
-  ne sont importés NULLE PART (grep) — le composant vivant est
-  `Reveal.tsx`.
-- CSS orphelin (aucun `className` consommateur, grep §6.4) : le
-  système `.reveal` + keyframes + `.reveal-d-0…7` (`index.css:535–658`),
+Deux états, séparés parce que l'un a été nettoyé et l'autre non.
+
+**Supprimé** — chaque suppression a d'abord été vérifiée par grep sur le
+dépôt entier (zéro importateur, ou zéro `className` pour le CSS) :
+
+- `client/src/hooks/useScrollReveal.ts` et ses 4 hooks `useScrollReveal`
+  (10), `useStaggeredReveal` (57), `useParallax` (120), `useMagnetic`
+  (147) — l'équivalent vivant est `components/uptime/Reveal.tsx`.
+- 284 lignes de CSS orphelin (`index.css` ramené de 959 à 675 lignes) :
+  système `.reveal` + keyframes + `.reveal-d-0…7` (ancien 535–658),
   `.parallax-*` (663–674), `.animate-float-ambient` (689–691),
   `.animate-mesh` (709–711), `.glass` (355–364), `.gradient-border`
-  (367–384), `.animate-count-up` (860–862) — le compteur réel est
-  JS (`CountUp.tsx`), `.magnetic` (897–899), `.page-transition-in/out`
-  (924–929), `.ecg-sweep` (809–811).
+  (367–384), `.animate-count-up` (860–862) — le compteur réel est JS
+  (`CountUp.tsx`) —, `.magnetic` (897–899), `.page-transition-in/out`
+  (924–929), `.ecg-sweep` (809–811). Les numéros entre parenthèses
+  pointent sur la version d'avant suppression ; le tableau §6.4 est à
+  jour de la nouvelle numérotation.
+- `apiRequest` (`lib/api.ts`, ancien 176–183) : simple alias de
+  `request`, jamais importé (§2.1).
+- `client/src/_core/` et `client/src/_core/hooks/` : répertoires vides.
+
+**Toujours présent, consommateur non vérifié** — laissé en place parce
+qu'un lecteur hors `client/` (runtime de la plateforme, outil de l'auteur)
+n'a pas pu être écarté :
+
 - `window.__WOUTER_ROUTES__` : le patch wouter l'ÉCRIT
   (`patches/wouter@3.7.1.patch:9–24`) ; grep du dépôt entier : AUCUN
   lecteur. Consommateur présumé (runtime de la plateforme) :
@@ -527,7 +562,6 @@ autoprefixer, postcss, @tailwindcss/typography ».
 - `client/public/manus-routes.json` (6 routes listées) : aucun
   lecteur trouvé sous `client/` ; consommateur serveur/externe :
   non vérifié.
-- `client/src/_core/hooks/` : répertoire VIDE — squelette mort.
 - `clearEvidence()` (`qaContext.ts:59`) : appelé uniquement par
   `qaContext.test.ts` (24, 36, 45, 57, 66, 81, 95) ; aucun chemin
   applicatif ne purge les preuves.
@@ -545,7 +579,7 @@ n'en ont aucun (listing complet vérifié) :
 | Monture    | `main.tsx`, `App.tsx`                                                                                                                                                                                                                                                                                                                                                     |
 | Lib        | `lib/api.ts` (tout le contrat §2), `lib/utils.ts`                                                                                                                                                                                                                                                                                                                         |
 | Contexte   | `contexts/ThemeContext.tsx`                                                                                                                                                                                                                                                                                                                                               |
-| Hooks      | `useAutoRefresh.ts`, `useMediaQuery.ts`, `useMyPlan.ts`, `useScrollReveal.ts` (dormant)                                                                                                                                                                                                                                                                                   |
+| Hooks      | `useAutoRefresh.ts`, `useMediaQuery.ts`, `useMyPlan.ts`                                                                                                                                                                                                                                                                                                                   |
 | Pages      | les 11 : `Landing`, `Dashboard`, `MonitorDetail`, `PublicStatus`, `SupportTicket`, `Settings`, `QaQueue`, `AdminConsole`, `Login`, `Register`, `NotFound`                                                                                                                                                                                                                 |
 | Composants | les 23 : `ErrorBoundary`, `ui/skeleton`, `ui/sonner`, `ui/tooltip`, `uptime/AppShell`, `ClientReadsShowcase`, `ConfirmDialog`, `CountUp`, `HeroCircuit`, `HeroDeck`, `Logo`, `Modal`, `PageState`, `PeriodSelector`, `ProductPreview`, `ReportIssueDialog`, `Reveal`, `RowMenu`, `SiteFooter`, `StatusBadge`, `qa/QaChips`, `qa/QaTicketDetail`, `status/StatusAnalytics` |
 | Styles     | `index.css`, `index.html`                                                                                                                                                                                                                                                                                                                                                 |

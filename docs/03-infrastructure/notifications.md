@@ -379,7 +379,7 @@ Comment observer un échec d'envoi, dans l'ordre pratique :
    conversation Telegram (`:191-194`).
 
 - Surface manquante : `listNotificationDeliveries(incidentId)` existe
-  (`dispatcher.ts:248-255`) mais **n'a aucun appelant** dans `server/` et
+  (`dispatcher.ts:236-243`) mais **n'a aucun appelant** dans `server/` et
   `client/` (vérifié par recherche) — l'API n'expose ni l'historique ni l'état
   des livraisons à l'utilisateur. Il n'y a pas non plus de route de retry
   manuelle ni de réactivation d'une ligne `failed`.

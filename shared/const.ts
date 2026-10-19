@@ -11,11 +11,9 @@ export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
 export const OAUTH_STATE_COOKIE = "__Host-oauth_state";
 
 // `state` carries the callback redirect URI (used at token exchange) plus the
-// CSRF nonce. Defined here so the client encoder and server decoder never drift.
+// CSRF nonce. The platform builds it; this module is the only place that
+// decodes it, so the shape never drifts between the two call sites.
 export type OAuthState = { redirectUri: string; nonce?: string };
-
-export const encodeOAuthState = (state: OAuthState): string =>
-  btoa(JSON.stringify(state));
 
 export const decodeOAuthState = (state: string): OAuthState => {
   let decoded: string;

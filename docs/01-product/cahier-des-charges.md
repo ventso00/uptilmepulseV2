@@ -243,7 +243,7 @@ _Figure 13 — Vue intégrale de `/` (1440 × 4 134), pour la mise en page et la
 uptimepulse/
 ├── shared/                     ← paquet workspace @uptimepulse/shared
 │   ├── contracts.ts            12 enums, tous les schémas Zod, règles chiffrées
-│   └── db/                     schéma Drizzle, relations, migrations 0000–0007
+│   └── db/                     schéma Drizzle, migrations 0000–0007
 ├── client/src/
 │   ├── App.tsx                 routage + choix du régime visuel par route
 │   ├── pages/                  10 pages (publiques, session, admin)
@@ -263,7 +263,11 @@ Décisions structurantes mesurées :
 - **Deux artefacts, un processus.** `vite build` produit `dist/public` (SPA), `esbuild` produit `dist/index.js` avec `--packages=external`. L'ordonnanceur tourne dans le même processus que l'API : c'est ce qui rend le `setInterval` de 30 s possible sans cron externe. `--packages=external` a une conséquence contractuelle : tout import **statique** d'un paquet de `devDependencies` est remonté en tête du bundle, que le `node_modules` de production ne sait pas résoudre. C'est pourquoi `server/_core/vite.ts:8-10` charge Vite par `await import("vite")` (mesuré sur `dist/index.js` : plus aucun paquet de la famille vite en import statique, un seul `import("vite")` d'exécution) et pourquoi servir le statique tient dans son propre module `server/_core/static.ts:5-31`, branché selon `NODE_ENV` (`server/_core/index.ts:74-78`).
 - **La résolution par alias est le mécanisme porteur.** `@/*` → `client/src/*` et `@shared/*` → `shared/*` sont déclarés trois fois (`tsconfig.json`, `vite.config.ts`, `vitest.config.ts`) ; esbuild honore `paths`, donc `@shared/...` est **inliné** dans le bundle serveur. Un import nu `@uptimepulse/shared` survivrait à `--packages=external` et casserait à l'exécution : c'est la raison documentée de garder les alias.
 - **Contrat unique.** Zod 4 dans `shared/contracts.ts` valide la requête, la réponse **et** ce que le client accepte de lire ; le test de la page publique repasse le payload réel dans `publicStatusResponseSchema`.
-- **`shared/db/relations.ts` est vide** : aucune relation Drizzle déclarée, toutes les jointures sont écrites à la main. À documenter comme un choix, pas comme un oubli, ou à combler.
+- **Aucune relation Drizzle déclarée** : toutes les jointures sont écrites à
+  la main dans les requêtes — c'est un choix, pas un oubli. Le stub
+  `shared/db/relations.ts` (`import {} from "./schema";`, 27 octets, zéro
+  importateur) a été supprimé ; ce qui reste à faire, si un jour c'est
+  jugé utile, c'est de les déclarer réellement.
 
 ## 8. Modèle de données
 

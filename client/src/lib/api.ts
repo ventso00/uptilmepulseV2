@@ -173,14 +173,6 @@ async function request<T>(
   return parsed.data;
 }
 
-export function apiRequest<T>(
-  path: string,
-  schema: z.ZodType<T>,
-  options?: RequestInit
-): Promise<T> {
-  return request(path, schema, options);
-}
-
 /** Write endpoint with no meaningful response body. */
 export const apiRequestUntyped = requestNoContent;
 

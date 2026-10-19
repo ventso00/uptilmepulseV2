@@ -184,7 +184,7 @@ manifeste racine (`pnpm-workspace.yaml`).
 | `server/statuspages`           | Pages publiques et leur module d'analyse                                                                                                                            |
 | `server/qa`                    | Tickets, auto-tests, point quotidien, rapports et réponses clients                                                                                                  |
 | `server/scheduler`             | Tick, pool borné, endpoint cron, enregistrement plateforme, purge de rétention                                                                                      |
-| `server/routes`                | Agrégat transverse du dashboard                                                                                                                                     |
+| `server/dashboard`             | Agrégat transverse du dashboard                                                                                                                                     |
 | `server/_core`                 | Entrée Express, enveloppe d'erreur, déballage des erreurs pilote (`db-error.ts`), service des assets (`static.ts`), contexte tRPC, sphère plateforme                |
 | `shared/db`                    | **Schéma Drizzle et les huit migrations `0000`→`0007`** — pas de dossier `drizzle/`                                                                                 |
 | `shared/contracts.ts`          | Schémas zod partagés client/serveur                                                                                                                                 |

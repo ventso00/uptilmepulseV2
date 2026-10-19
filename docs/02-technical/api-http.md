@@ -15,7 +15,7 @@ Sources reluées intégralement : `server/_core/index.ts`, `server/_core/http.ts
 `server/auth/rateLimit.ts`, `server/auth/owner.ts`, `server/monitors/routes.ts`,
 `server/monitors/ssrf.ts`, `server/notifications/routes.ts`,
 `server/statuspages/routes.ts`, `server/qa/routes.ts`, `server/qa/tickets.ts`,
-`server/admin/routes.ts`, `server/routes/dashboard.ts`,
+`server/admin/routes.ts`, `server/dashboard/routes.ts`,
 `server/scheduler/routes.ts`, `server/scheduler/heartbeatAuth.ts`,
 `server/scheduler/register.ts`, `server/scheduler/limits.ts`,
 `server/plans/service.ts`, `server/plans/respond.ts`, `server/routers.ts`,
@@ -478,12 +478,12 @@ Sérialisation `{ id, slug, title, description, createdAt }` (`:13-21`).
   `generatedAt` (`shared/contracts.ts:353-548`).
 - `Cache-Control: public, max-age=30` (`server/statuspages/routes.ts:195`).
 
-### 3.5 Dashboard (`server/routes/dashboard.ts`)
+### 3.5 Dashboard (`server/dashboard/routes.ts`)
 
 #### GET /api/dashboard — A, `requireUser`, aucune limite
 
 - Fenêtre 30 jours, 20 incidents actifs max, 30 checks récents par monitor
-  (`server/routes/dashboard.ts:12-14`).
+  (`server/dashboard/routes.ts:12-14`).
 - Tout est agrégé en SQL ; les checks récents sont tronqués par monitor
   puis rendus du plus ancien au plus récent pour la bande HTML
   (`:90-124,126-148,169`).

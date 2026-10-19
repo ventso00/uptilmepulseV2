@@ -16,15 +16,6 @@ export type HeartbeatJob = {
   description?: string;
 };
 
-/**
- * Update patch. All fields optional; unset = leave unchanged.
- * `enable`: true = resume, false = pause; omit = unchanged.
- * `name` is the (project, owner)-scope key and cannot be changed.
- */
-export type HeartbeatJobUpdate = Partial<Omit<HeartbeatJob, "name">> & {
-  enable?: boolean;
-};
-
 export type HeartbeatJobInfo = {
   taskUid: string;
   name: string;
@@ -154,40 +145,6 @@ export async function createHeartbeatJob(
     },
     userSession
   );
-}
-
-/**
- * Update an existing cron located by `taskUid`. Only fields you pass in
- * `patch` are mutated. `enable` flips resume/pause; omit to leave alone.
- */
-export async function updateHeartbeatJob(
-  taskUid: string,
-  patch: HeartbeatJobUpdate,
-  userSession: string
-): Promise<{ nextExecutionAt?: string | null }> {
-  if (patch.path !== undefined) validateCallbackPath(patch.path);
-  const body: Record<string, unknown> = { taskUid };
-  if (patch.cron !== undefined) body.cronExpression = patch.cron;
-  if (patch.path !== undefined) body.callbackPath = patch.path;
-  if (patch.method !== undefined) body.callbackMethod = patch.method;
-  if (patch.payload !== undefined) {
-    body.callbackPayload = stringifyPayload(patch.payload);
-  }
-  if (patch.description !== undefined) body.description = patch.description;
-  if (patch.enable !== undefined) body.enable = patch.enable;
-  return callForge<{ nextExecutionAt?: string | null }>(
-    "UpdateHeartbeatJob",
-    body,
-    userSession
-  );
-}
-
-/** Delete a cron located by `taskUid`. Idempotent on caller side. */
-export async function deleteHeartbeatJob(
-  taskUid: string,
-  userSession: string
-): Promise<void> {
-  await callForge("DeleteHeartbeatJob", { taskUid }, userSession);
 }
 
 /**

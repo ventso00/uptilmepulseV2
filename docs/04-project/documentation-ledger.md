@@ -148,7 +148,7 @@ correction de texte : le bundle serveur `dist/index.js` importait statiquement
 `vite`, `@vitejs/plugin-react` et `@tailwindcss/vite`
 (`server/_core/index.ts:9` → `server/_core/vite.ts:6-7`, les deux d'alors →
 `vite.config.ts:1-2`), alors que ces trois paquets sont en `devDependencies`
-(`package.json:56,58,63,75`) et que le stage runtime de l'image installe avec
+(`package.json:47,48,53,63`) et que le stage runtime de l'image installe avec
 `--prod` (`Dockerfile:35`). Le conteneur ne pouvait donc pas démarrer. Reproduit
 en renommant `node_modules/vite` puis en lançant `node dist/index.js` :
 `ERR_MODULE_NOT_FOUND: Cannot find package 'vite'`. Le CI qui lance l'image et
@@ -237,6 +237,76 @@ ces commits désignait donc une à quinze lignes trop haut.
 
 Contrôle final : 999 citations balayées dans 30 fichiers markdown, aucune hors
 plage, aucun ancrage tombant sur une ligne vide ou sur de la simple ponctuation.
+
+## Le ménage de code et sa resynchronisation documentaire
+
+Le nettoyage (phase 3 de la restructuration) retire du code mort ; chaque
+retrait a d'abord été prouvé mort par grep sur le dépôt entier, puis les
+citations qui pointaient dessus ont été repositionnées.
+
+- **CSS orphelin** : 284 lignes sur 959 (`client/src/index.css` ramené à 675
+  lignes), sept plages — `.reveal` et ses keyframes et retards, `.parallax-*`,
+  `.glass`, `.gradient-border`, `.magnetic`, `.animate-count-up`,
+  `.animate-float-ambient`, `.animate-mesh`, `.page-transition-*`,
+  `.ecg-sweep`. Sont gardés parce qu'ils ont des consommateurs : `.ecg-line`,
+  `.spotlight`, `.tilt-frame`, `.shadow-*`.
+- **TypeScript orphelin** : `client/src/hooks/useScrollReveal.ts` (4 hooks,
+  zéro importateur ; l'équivalent vivant est `components/uptime/Reveal.tsx`),
+  les répertoires vides `client/src/_core/` et `client/src/_core/hooks/`,
+  `apiRequest` (alias de `request`, jamais importé), `encodeOAuthState` (l'`state`
+  est fabriqué par la plateforme), `BadRequestError` / `UnauthorizedError` /
+  `NotFoundError` (`ForbiddenError` est gardé : quatre `throw` dans
+  `server/_core/sdk.ts`), `updateHeartbeatJob`, `deleteHeartbeatJob` et leur
+  type, `shared/db/relations.ts` (stub de 27 octets, zéro importateur) et
+  `server/_core/types/cookie.d.ts` — celui-ci retiré puis **prouvé** redondant :
+  `cookie@1.0.2` livre ses propres types et `tsc --noEmit` passe sans le shim.
+- **Dépendances** : douze paquets sans un seul import (`autoprefixer`,
+  `postcss`, `tailwindcss-animate`, `@tailwindcss/typography`,
+  `class-variance-authority`, sept `@radix-ui/*` hors `react-tooltip`),
+  539 lignes de `pnpm-lock.yaml` en moins, réinstallés hors ligne. Quatre
+  faux positifs sont conservés parce que le **serveur** les importe : `axios`
+  (`server/_core/sdk.ts:8`), `superjson` (`server/_core/trpc.ts:3`),
+  `@trpc/server` (`TRPCError` dans `heartbeat.ts:1` et `notification.ts:1`) et
+  `next-themes` (`ui/sonner.tsx:1`, provider non monté).
+- **Arborescence** : `server/routes/dashboard.ts` devient
+  `server/dashboard/routes.ts`, seul écart à la convention
+  `server/<module>/routes.ts` ; un seul site d'import
+  (`server/_core/index.ts:13`) et cinq citations d'écrits repointés.
+- **Numéros de ligne.** Le décalage d'une suppression pure se calcule à partir
+  des hunks `git diff` (offset cumulé avant chaque ligne), pas d'une
+  soustraction arbitraire : `index.css` décale de −32, −210, −218, −221, −238,
+  −275 puis −284 selon la zone, `api.ts` de −8 au-delà de 183, `package.json`
+  de −12 au-delà de 70. Les seize plages du tableau §6.4 de `client.md`, les
+  trente et une lignes du tableau §2.3 et les citations `package.json:` de
+  cinq fichiers ont été repondues puis revérifiées à la main sur le fichier
+  cible (par exemple `api.publicStatus` `:290-294`, `validateCallbackPath`
+  `:118-125`, `packageManager` `:66`).
+- **Deux citations cassées trouvées par l'outil, et deux affirmations fausses
+  trouvées en chemin.** `dispatcher.ts:248-255` pointait au-delà des 244 lignes
+  du fichier (la fonction est à `:236-243`) ; `digest.test.ts:37` idem — et son
+  commentaire disait « limites digest » alors que ce fichier ne teste que
+  `digestPeriodKey:38`, les fonctions de fenêtre et de plafond étant justement
+  sans test. Le texte suit la mesure, pas l'ancienne étiquette.
+- **Outil ajouté au dépôt** : `scripts/check-citations.mjs` (aucune
+  dépendance, `node scripts/check-citations.mjs`). Il résout les chemins
+  complets et les noms de fichier seuls, et contrôle que la cible existe et
+  que la plage est dans les limites. Il ne juge pas le contenu d'une ligne,
+  et signale sans compter les références à nom de fichier seul trop ambiguës
+  pour être résolues (`routes.ts:161-168` : huit fichiers du même nom).
+  Dernier état mesuré : 1793 citations contrôlées dans 30 fichiers markdown,
+  aucune hors limite, 35 non résolues.
+- **Portes après le ménage** : `tsc` sans erreur, `oxlint` 0 warning / 0 erreur
+  sur 128 fichiers, 23 fichiers et 223 tests verts, `prettier --check` propre,
+  `pnpm build` à 235.9 kb de bundle serveur. Le bundle production démarre et
+  répond `200` sur `/`, `/dashboard`, `/status/demo-services`, `/support`,
+  `/api/health`, `/api/plans` et `401` sur `/api/dashboard`, `/api/qa/overview`
+  et `/api/notification-channels`, avec une passe d'ordonnanceur sans erreur.
+- **Ce qui n'a volontairement pas été fait** : renommer `.auth-input` (27
+  utilisations, bénéfice purement cosmétique et risque de casse silencieuse si
+  un site est manqué — le nom prête à confusion, c'est écrit dans
+  `client.md` §7.3 au lieu d'être corrigé dans le code) ; supprimer le patch
+  wouter, `client/public/manus-routes.json`, `clearEvidence()` ou le bloc
+  `.dark`, dont un lecteur hors `client/` n'a pas pu être écarté.
 
 ## Ce que ces corrections ne prétendent pas
 

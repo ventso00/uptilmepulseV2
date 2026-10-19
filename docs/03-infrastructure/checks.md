@@ -22,7 +22,7 @@ routes,register}.ts`, `server/_core/heartbeat.ts`, `server/checks/{engine,client
   rien si un job `uptimepulse-checks` actif existe déjà (`register.ts:12-21`).
 - Le format cron est celui du service plateforme : 6 champs `sec min heure dom
 mois dow`, UTC, intervalle minimal 60 s (`server/_core/heartbeat.ts:6-9`) ; le
-  chemin doit commencer par `/api/scheduled/` (`heartbeat.ts:127-134`).
+  chemin doit commencer par `/api/scheduled/` (`heartbeat.ts:118-125`).
 - Branchement au démarrage : `ensureHeartbeatJob()` puis
   `startInternalScheduler()` dans le callback `server.listen`
   (`server/_core/index.ts:93-94`).

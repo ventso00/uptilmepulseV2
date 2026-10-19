@@ -351,38 +351,6 @@ input:focus-visible {
   box-shadow: var(--shadow-glow-emerald);
 }
 
-/* Glassmorphism for nav bars, modals */
-.glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid var(--line);
-}
-.dark .glass {
-  background: rgba(11, 18, 32, 0.8);
-  border: 1px solid var(--line);
-}
-
-/* Gradient borders */
-.gradient-border {
-  position: relative;
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: calc(var(--radius) + 1px);
-  background: linear-gradient(135deg, var(--brand), var(--accent-blue));
-  opacity: 0;
-  transition: opacity 300ms ease;
-  z-index: -1;
-}
-.gradient-border:hover::before {
-  opacity: 1;
-}
-
 /* ==========================================================================
    Dot-matrix headline (reference: bitmap hero lettering, CSS-only)
    The text is masked by a dot grid. Fallback: plain ink where the clip is
@@ -533,184 +501,6 @@ input:focus-visible {
 }
 
 /* ==========================================================================
-   Scroll-Reveal Animations (IntersectionObserver driven via .reveal class)
-   ========================================================================== */
-@keyframes reveal-up {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 24px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes reveal-down {
-  from {
-    opacity: 0;
-    transform: translate3d(0, -24px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes reveal-left {
-  from {
-    opacity: 0;
-    transform: translate3d(-32px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes reveal-right {
-  from {
-    opacity: 0;
-    transform: translate3d(32px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes reveal-scale {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-@keyframes reveal-blur {
-  from {
-    opacity: 0;
-    filter: blur(8px);
-    transform: translate3d(0, 16px, 0);
-  }
-  to {
-    opacity: 1;
-    filter: none;
-    transform: none;
-  }
-}
-
-.reveal {
-  opacity: 0;
-  animation-fill-mode: both;
-  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
-  animation-duration: 700ms;
-}
-.reveal.up {
-  animation-name: reveal-up;
-}
-.reveal.down {
-  animation-name: reveal-down;
-}
-.reveal.left {
-  animation-name: reveal-left;
-}
-.reveal.right {
-  animation-name: reveal-right;
-}
-.reveal.scale {
-  animation-name: reveal-scale;
-}
-.reveal.blur {
-  animation-name: reveal-blur;
-}
-
-/* Stagger delays */
-.reveal-d-0 {
-  animation-delay: 0ms;
-}
-.reveal-d-1 {
-  animation-delay: 80ms;
-}
-.reveal-d-2 {
-  animation-delay: 160ms;
-}
-.reveal-d-3 {
-  animation-delay: 240ms;
-}
-.reveal-d-4 {
-  animation-delay: 320ms;
-}
-.reveal-d-5 {
-  animation-delay: 400ms;
-}
-.reveal-d-6 {
-  animation-delay: 480ms;
-}
-.reveal-d-7 {
-  animation-delay: 560ms;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1 !important;
-    animation: none !important;
-  }
-}
-
-/* ==========================================================================
-   Parallax & Scroll-Linked Animations (CSS-driven where possible)
-   ========================================================================== */
-.parallax-slow {
-  transform: translateZ(0);
-  will-change: transform;
-}
-.parallax-medium {
-  transform: translateZ(0);
-  will-change: transform;
-}
-.parallax-fast {
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-/* Floating ambient shapes */
-@keyframes float-ambient {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  33% {
-    transform: translate3d(20px, -15px, 0) rotate(1deg);
-  }
-  66% {
-    transform: translate3d(-15px, 10px, 0) rotate(-1deg);
-  }
-}
-.animate-float-ambient {
-  animation: float-ambient 18s ease-in-out infinite;
-}
-
-/* Gradient mesh background animation */
-@keyframes mesh-shift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  25% {
-    transform: translate3d(3%, -2%, 0) scale(1.02);
-  }
-  50% {
-    transform: translate3d(-2%, 3%, 0) scale(0.98);
-  }
-  75% {
-    transform: translate3d(2%, 2%, 0) scale(1.01);
-  }
-}
-.animate-mesh {
-  animation: mesh-shift 20s ease-in-out infinite;
-}
-
-/* ==========================================================================
    Live Indicator & Pulse
    ========================================================================== */
 @keyframes live-ping {
@@ -793,21 +583,10 @@ input:focus-visible {
     stroke-dashoffset: 0;
   }
 }
-@keyframes ecg-sweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(320%);
-  }
-}
 .ecg-line {
   stroke-dasharray: 640;
   stroke-dashoffset: 640;
   animation: ecg-draw 2.6s ease-out 0.3s forwards;
-}
-.ecg-sweep {
-  animation: ecg-sweep 5s linear infinite;
 }
 
 /* ==========================================================================
@@ -845,23 +624,6 @@ input:focus-visible {
 }
 
 /* ==========================================================================
-   Number Count-Up (CSS fallback, JS component handles real counting)
-   ========================================================================== */
-@keyframes count-up {
-  from {
-    opacity: 0;
-    transform: translateY(0.5em);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.animate-count-up {
-  animation: count-up 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
-}
-
-/* ==========================================================================
    Spotlight / Radial Glow Following Pointer
    ========================================================================== */
 .spotlight::before {
@@ -892,43 +654,6 @@ input:focus-visible {
 }
 
 /* ==========================================================================
-   Magnetic Button / CTA
-   ========================================================================== */
-.magnetic {
-  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* ==========================================================================
-   Page Transition (View Transitions API fallback)
-   ========================================================================== */
-@keyframes page-in {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes page-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translate3d(0, -8px, 0);
-  }
-}
-.page-transition-in {
-  animation: page-in 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-.page-transition-out {
-  animation: page-out 300ms cubic-bezier(0.33, 0.12, 0.46, 1);
-}
-
-/* ==========================================================================
    Reduced Motion
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
@@ -945,14 +670,5 @@ input:focus-visible {
   }
   .spotlight::before {
     display: none;
-  }
-  .parallax-slow,
-  .parallax-medium,
-  .parallax-fast {
-    transform: none !important;
-  }
-  .animate-float-ambient,
-  .animate-mesh {
-    animation: none !important;
   }
 }

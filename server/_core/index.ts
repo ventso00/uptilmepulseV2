@@ -10,7 +10,7 @@ import { setupVite } from "./vite";
 import { serveStatic } from "./static";
 import { registerApplicationAuthRoutes } from "../auth/routes";
 import { registerMonitorRoutes } from "../monitors/routes";
-import { registerDashboardRoutes } from "../routes/dashboard";
+import { registerDashboardRoutes } from "../dashboard/routes";
 import { registerSchedulerRoutes } from "../scheduler/routes";
 import { registerNotificationRoutes } from "../notifications/routes";
 import { registerStatusPageRoutes } from "../statuspages/routes";
