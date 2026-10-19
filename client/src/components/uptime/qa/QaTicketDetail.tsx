@@ -197,9 +197,7 @@ export function QaTicketDetail({
         <p className="font-mono text-xs text-brand-glow">
           {qaReference(ticket.id)}
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-ink">
-          {ticket.title}
-        </h2>
+        <h2 className="mt-2 text-xl font-semibold text-ink">{ticket.title}</h2>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <SeverityChip severity={ticket.severity} />
           <StatusChip status={ticket.status} />

@@ -1,0 +1,16 @@
+# Le projet stocke du LF et prettier est configuré en endOfLine: lf
+# (.prettierrc). Sans cette règle, un checkout Windows avec core.autocrlf=true
+# écrit du CRLF dans l'arbre de travail et `pnpm format:check` tombe sur cinq
+# faux positifs que la CI Linux, elle, ne voit jamais.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
+
+# Un patch applicé en CRLF ne s'applique plus : pnpm en a besoin en LF.
+*.patch text eol=lf

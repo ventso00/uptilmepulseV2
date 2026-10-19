@@ -17,12 +17,7 @@ export function Logo({ className = "h-9 w-9" }: { className?: string }) {
       aria-label="UptimePulse"
       focusable="false"
     >
-      <rect
-        width="40"
-        height="40"
-        rx="10"
-        fill="var(--logo-tile, #141414)"
-      />
+      <rect width="40" height="40" rx="10" fill="var(--logo-tile, #141414)" />
       <path
         d="M8 22h5l3-8 5 14 4-11 2.5 5H32"
         fill="none"
