@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref instead of burning minutes on stale
+# commits.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+      - name: Build the production image
+        run: docker build -t uptimepulse:ci .
+      - name: Smoke test the health endpoint
+        run: |
+          docker run -d --name uptimepulse-ci -p 3000:3000 uptimepulse:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then
+              echo "health endpoint responded"
+              docker rm -f uptimepulse-ci
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health endpoint never responded"
+          docker logs uptimepulse-ci || true
+          docker rm -f uptimepulse-ci
+          exit 1
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

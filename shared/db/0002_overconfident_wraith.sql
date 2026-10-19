@@ -1,0 +1,1 @@
+ALTER TABLE `notification_deliveries` ADD CONSTRAINT `notification_deliveries_incident_channel_type_unique` UNIQUE(`incidentId`,`channelId`,`type`);

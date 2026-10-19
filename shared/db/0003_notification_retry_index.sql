@@ -1,0 +1,1 @@
+CREATE INDEX `notification_deliveries_retry_queue_idx` ON `notification_deliveries` (`status`,`createdAt`);
