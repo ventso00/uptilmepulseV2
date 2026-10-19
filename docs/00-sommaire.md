@@ -155,6 +155,21 @@ donc livrée en Markdown versionnable. Pour la charger dans Notion :
 3. Notion recrée l'arborescence `NN-dossier/fichier.md` sous forme de pages
    imbriquées, et le nom ordonné du fichier devient le titre de page.
 
+Le paquet est déjà produit (mesuré le 2026-10-19) :
+`uptimepulse-docs-notion.zip`, à la racine du dossier de travail, **au-dessus**
+du dépôt — il n'est donc pas versionné et ne part pas avec le code. Il compte
+cinquante entrées, dont quarante-deux fichiers : les vingt-sept pages de
+`docs/`, les douze images `docs/images/*.png`, et les trois pages racines
+`README.md`, `CONTRIBUTING.md`, `SECURITY.md` (les huit entrées restantes sont
+les dossiers). La commande exacte, depuis la racine du dépôt :
+`py -3 -m zipfile -c ../uptimepulse-docs-notion.zip docs README.md CONTRIBUTING.md SECURITY.md`.
+Les séparateurs y sont des `/`, et c'est la raison pour laquelle l'archive est
+faite ainsi plutôt qu'avec `Compress-Archive` de PowerShell, qui écrit des
+chemins en `\` : beaucoup de lecteurs les interprètent alors comme un seul nom
+de fichier, et l'arborescence n'est plus reconstruite. Le dossier `docs/`
+arrivant aplati à la racine de l'archive, les images se résolvent depuis
+`docs/images/` une fois importées.
+
 Deux limites à connaître d'avance : les liens relatifs entre pages Markdown
 (`checks.md`, `../02-technical/api-http.md`) ne sont **pas** réécrits vers les
 pages Notion et restent du texte cliquable seulement dans le dépôt ; les images
