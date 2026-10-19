@@ -269,6 +269,72 @@ couverture est dans `docs/06-verification/tests-et-couverture.md`.
 d'image, pas d'environnement GitHub. La mise en ligne est pour l'instant
 manuelle : construire l'image, la transporter, la lancer, brancher la base.
 
+## Publication du dépôt
+
+### Ce que l'histoire locale permet
+
+Mesuré le 2026-10-19 : `main` est à `df4db5c` et compte cinq commits, la
+branche de travail `refactor/restructure-architecture` en ajoute huit
+(`git rev-list --count main..HEAD`), et `git merge-base main HEAD` rend
+`df4db5c`. Autrement dit `git rev-list --count HEAD..main` rend `0` : `main`
+n'a rien que la branche ignore. La réconciliation est un fast-forward pur —
+pas de conflit possible, pas de commit de merge à justifier.
+
+Les huit commits se répartissent, à cette mesure, en deux correctifs serveur
+(`83ca3a8` rendre le bundle de production bootable sans les dépendances de
+développement, `3728469` déballer les erreurs pilote que Drizzle masquait), un
+ménage de code (`9800309` supprimer le code mort, aligner l'arborescence,
+resserrer les dépendances), et cinq passes de documentation. La liste se relit
+avec `git log --oneline main..HEAD`.
+
+### Ordre recommandé
+
+Pousser la branche et ouvrir la demande de fusion, parce que c'est le seul
+moyen de faire tourner la CI — elle n'a jamais été déclenchée :
+
+```sh
+git push -u origin refactor/restructure-architecture
+gh pr create --base main --head refactor/restructure-architecture
+# une fois la CI verte :
+git checkout main && git merge --ff-only refactor/restructure-architecture && git push
+```
+
+L'alternative est l'histoire linéaire sans demande de fusion : `git checkout
+main`, `git merge --ff-only refactor/restructure-architecture`, `git push -u
+origin main`. Elle publie immédiatement, au prix de laisser la CI sans aucun
+historique.
+
+Trois échecs sont plausibles au premier run et ne remettent pas en cause le
+code : `pnpm install --frozen-lockfile` doit re-télécharger le verrou depuis
+le réseau alors qu'ici il sort du magasin local (`node_modules` déjà garni),
+`pnpm audit --audit-level high` (`:35-36`) interroge l'avis de sécurité de npm
+en temps réel, et `gitleaks/gitleaks-action@v2` (`:54-57`) demande une
+licence GitHub Advanced Security sur un dépôt privé.
+
+### Identité des commits
+
+Les huit commits de la branche portent `Ventso <narindraranjal4hy@gmail.com>`,
+lu dans `git config user.name` et `user.email` sur ce poste. L'adresse du
+compte propriétaire inscrite dans le code et dans la documentation est
+`rajaomanjatoventso@gmail.com` (`server/auth/owner.ts`). GitHub rattache un
+commit au compte qui a vérifié l'adresse de l'auteur : sans ajout de
+`narindraranjal4hy@gmail.com` au compte, les commits arriveront sans lien avec
+le profil. À trancher avant la première poussée, soit en déclarant l'adresse
+sur le compte, soit en changeant `git config user.email` pour la suite —
+l'histoire déjà écrite ne se réécrit pas ici.
+
+### Ce que la poussée n'emportera pas
+
+`.env` est ignoré (`.gitignore:11`) et n'a jamais été suivi : `git ls-files
+.env` ne renvoie rien, et `git log --all -- .env` ne trouve aucun commit. Les
+deux seules variables du fichier (`DATABASE_URL`,
+`UPTIMEPULSE_ENCRYPTION_KEY`) ne sont lues que depuis l'environnement, et
+aucun log produit pendant ce travail (`*.log`, ignoré par `.gitignore:35`) ne
+contient leur nom ni un prélèvement de douze caractères de leur valeur —
+vérifié dans `dev-local.log` et `dev-server.log`, qui sont les deux seuls
+fichiers `.log` du poste. Le dépôt reste sans remote : la poussée attend une
+URL de dépôt et un jeton.
+
 ## Exploitation courante
 
 - **Démarrer / stopper** : `docker run -d --name uptimepulse -p 3000:3000
