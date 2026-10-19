@@ -303,10 +303,9 @@ citations qui pointaient dessus ont été repositionnées.
   que la plage est dans les limites. Il ne juge pas le contenu d'une ligne,
   et signale sans compter les références à nom de fichier seul trop ambiguës
   pour être résolues (`routes.ts:161-168` : huit fichiers du même nom).
-  Dernier état mesuré, le 2026-10-19 : 1799 citations contrôlées dans 30
-  fichiers markdown, aucune hors limite, 36 non résolues. Le compteur bouge dès
-  qu'une page gagne ou perd une référence : c'est la sortie de l'outil, pas un
-  chiffre à ressaisir à la main.
+  Le compteur (dernier rendu : 2026-10-19) est la sortie de l'outil, pas un
+  chiffre à ressaisir à la main : il bouge dès qu'une page gagne ou perd une
+  référence, y compris ce ledger.
 - **Portes après le ménage** : `tsc` sans erreur, `oxlint` 0 warning / 0 erreur
   sur 128 fichiers, 23 fichiers et 223 tests verts, `prettier --check` propre,
   `pnpm build` à 235.9 kb de bundle serveur. Le bundle production démarre et
@@ -319,6 +318,33 @@ citations qui pointaient dessus ont été repositionnées.
   `client.md` §7.3 au lieu d'être corrigé dans le code) ; supprimer le patch
   wouter, `client/public/manus-routes.json`, `clearEvidence()` ou le bloc
   `.dark`, dont un lecteur hors `client/` n'a pas pu être écarté.
+
+## Vérifications avant poussée
+
+La phase « finalisation opérationnelle » ne peut pas prouver ce qui exige un
+serveur MySQL ou un dépôt distant. Ce qui a pu être mesuré ici, le 2026-10-19 :
+
+- **Chaîne de migrations à jour.** `npx drizzle-kit generate` répond « No
+  schema changes, nothing to migrate » et ne crée aucun fichier : `git status`
+  reste propre après la commande. Le schéma TypeScript et les huit snapshots de
+  `shared/db/meta/_journal.json` sont alignés. Rejouer `0000` à `0007` sur une
+  base vide n'est pas fait, et la raison est écrite dans
+  `docs/05-exploitation/prise-en-main.md` §3.
+- **Compatibilité des dépendances.** Les 41 entrées de `dependencies` et
+  `devDependencies` (`package.json:21-65`, 24 + 17) sont toutes installées et
+  satisfont leur plage déclarée, comparées paquet par paquet. Le workspace
+  passe ensuite `CI=true pnpm install --frozen-lockfile --offline` sans un seul
+  octet du réseau : le verrou produit par le retrait des douze paquets inertes
+  est cohérent avec le manifeste.
+- **Portes re-courues après le ménage** : les cinq portes sont vertes (voir
+  plus haut « Le ménage de code et sa resynchronisation documentaire »), et le
+  serveur de développement répond de nouveau `200` sur `/`, `/dashboard`,
+  `/status/demo-services`, `/support`, `/api/health`, `/api/plans` et `401` sur
+  `/api/dashboard`, `/api/qa/overview`.
+
+Ce qui reste hors de portée d'ici : l'exécution de la CI (aucun remote), le
+build de l'image Docker (Docker absent), les six captures d'exploitation (compte
+du créateur), et la poussée elle-même, qui attend une URL de dépôt et un jeton.
 
 ## Ce que ces corrections ne prétendent pas
 
