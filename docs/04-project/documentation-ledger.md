@@ -135,10 +135,26 @@ suivante.
 
 `.env.example` déclarait 8 variables alors que le code en lit 15. Les sept
 manquantes sont ajoutées, avec pour chacune son régime : `UPTIMEPULSE_OWNER_EMAIL`
-et `SCHEDULER_INTERNAL` sont utiles dès qu'on sort du poste du créateur, les six
-`MANUS_*` / `OWNER_OPEN_ID` appartiennent au domaine plateforme **dormant** (le
+et `SCHEDULER_INTERNAL` sont utiles dès qu'on sort du poste du créateur, les sept
+`MANUS_*` et `OWNER_OPEN_ID` appartiennent au domaine plateforme **dormant** (le
 client ne fait aucun appel vers `/api/oauth`, et `sdk.authenticateRequest` n'a
-aucun appelant).
+aucun appelant). Le décompte complet, variable par variable avec son site de
+lecture, est dans `docs/03-infrastructure/environnement.md`.
+
+## Une mesure qui n'est pas une correction documentaire
+
+Rédiger `docs/03-infrastructure/deploiement.md` a produit autre chose qu'une
+correction de texte : le bundle serveur `dist/index.js` importe statiquement
+`vite`, `@vitejs/plugin-react` et `@tailwindcss/vite`
+(`server/_core/index.ts:9` → `server/_core/vite.ts:6-7` →
+`vite.config.ts:1-2`), alors que ces trois paquets sont en `devDependencies`
+(`package.json:56,58,63,75`) et que le stage runtime de l'image installe avec
+`--prod` (`Dockerfile:35`). Le conteneur ne peut donc pas démarrer. Reproduit en
+renommant `node_modules/vite` puis en lançant `node dist/index.js` :
+`ERR_MODULE_NOT_FOUND: Cannot find package 'vite'`. Le CI qui lance l'image et
+sonde `/api/health` (`.github/workflows/ci.yml:39-53`) l'aurait refusé ; il n'a
+jamais tourné. Ce n'est pas une affirmation documentaire fausse mais un défaut de
+code, et il est traité en Phase 4, pas ici.
 
 ## Ce que ces corrections ne prétendent pas
 

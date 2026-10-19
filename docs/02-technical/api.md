@@ -60,6 +60,12 @@ versionnées dans `shared/db/` (pas dans un dossier `drizzle/`).
 
 ## API
 
+Cette liste est un sommaire. La fiche exhaustive — garde d'accès, clé et
+paramètres exacts de rate limit pour chaque route, bornes zod champ par champ,
+forme de réponse, table des codes d'erreur et audit du débit — est dans
+[`api-http.md`](api-http.md). En cas de divergence, `api-http.md` fait foi parce
+qu'il est ancoré ligne par ligne sur les fichiers de route.
+
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/password` — l’inscription est réservée à l’adresse du créateur (`403 REGISTRATION_CLOSED`) et toute route authentifiée refuse un autre compte (`403 ACCESS_RESERVED`) : voir `access-model.md`
 - `GET/POST /api/monitors`, `GET/PUT/DELETE /api/monitors/:id`
 - `POST /api/monitors/:id/pause`, `POST /api/monitors/:id/resume`
