@@ -263,7 +263,8 @@ ne sert pas à celui qui déploie.
    `docs/03-infrastructure/deploiement.md` dit exactement où en est la
    vérification.
 2. **Aucun pipeline n'a jamais tourné à distance** — le dépôt n'a pas de remote
-   et porte une histoire à huit commits ; le CI est écrit, pas éprouvé.
+   et ne porte qu'une histoire locale non poussée (à lire avec
+   `git rev-list --count 979ed3a..HEAD`) ; le CI est écrit, pas éprouvé.
 3. **Les tests ne touchent jamais la base** — 45 handlers HTTP ne sont exercés
    par aucun test ; la couverture réelle est mesurée dans
    `docs/06-verification/tests-et-couverture.md`.

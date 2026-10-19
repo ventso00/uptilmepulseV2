@@ -231,12 +231,20 @@ ces commits désignait donc une à quinze lignes trop haut.
   `oauth.ts` 1, `static.ts` 1, `index.ts` 3) : **seize**. Le chiffre et la phrase
   d'introduction sont corrigés, ainsi que `00-sommaire.md` qui colportait 14.
 - **L'état du dépôt.** `cahier-des-charges.md` annonçait « `main`, un seul
-  commit ». Mesuré : la branche de travail est `refactor/restructure-architecture`,
-  sept commits depuis `979ed3a`, et `main` s'arrête à `df4db5c` avec cinq
-  commits.
+  commit ». Mesuré à ce moment-là : la branche de travail est
+  `refactor/restructure-architecture`, sept commits depuis `979ed3a`, et `main`
+  s'arrête à `df4db5c` avec cinq commits. Le premier chiffre est une date, pas
+  un état : la branche a grandi depuis et se recompte avec
+  `git rev-list --count 979ed3a..HEAD`.
 
-Contrôle final : 999 citations balayées dans 30 fichiers markdown, aucune hors
-plage, aucun ancrage tombant sur une ligne vide ou sur de la simple ponctuation.
+Contrôle final de cette passe : 999 citations balayées dans 30 fichiers
+markdown, aucune hors plage, aucun ancrage tombant sur une ligne vide ou sur de
+la simple ponctuation. Ce compte-là vient d'un contrôle ponctuel antérieur à
+l'outil et n'est pas rejouable. Ce qui est mesuré, en revanche : le corpus de
+l'époque (à `36687b8`) contenait déjà 967 références à chemin complet et 810
+références à nom de fichier seul. Le chiffre courant, plus élevé, vient donc de
+l'élargissement du balayage par `scripts/check-citations.mjs`, pas d'un gros
+volume de documentation ajouté depuis.
 
 ## Le ménage de code et sa resynchronisation documentaire
 
@@ -295,8 +303,10 @@ citations qui pointaient dessus ont été repositionnées.
   que la plage est dans les limites. Il ne juge pas le contenu d'une ligne,
   et signale sans compter les références à nom de fichier seul trop ambiguës
   pour être résolues (`routes.ts:161-168` : huit fichiers du même nom).
-  Dernier état mesuré : 1793 citations contrôlées dans 30 fichiers markdown,
-  aucune hors limite, 35 non résolues.
+  Dernier état mesuré, le 2026-10-19 : 1799 citations contrôlées dans 30
+  fichiers markdown, aucune hors limite, 36 non résolues. Le compteur bouge dès
+  qu'une page gagne ou perd une référence : c'est la sortie de l'outil, pas un
+  chiffre à ressaisir à la main.
 - **Portes après le ménage** : `tsc` sans erreur, `oxlint` 0 warning / 0 erreur
   sur 128 fichiers, 23 fichiers et 223 tests verts, `prettier --check` propre,
   `pnpm build` à 235.9 kb de bundle serveur. Le bundle production démarre et
