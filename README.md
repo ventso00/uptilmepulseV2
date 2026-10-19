@@ -281,6 +281,10 @@ ne sert pas à celui qui déploie.
 9. **L'identité git de l'auteur est celle de la machine qui a écrit le baseline** —
    elle est dans les commits, et la changer après publication impose une
    réécriture d'historique.
+10. **La base n'a été rejouée que sur MariaDB** — les huit migrations passées
+    sur un schéma vierge local (`docs/03-infrastructure/deploiement.md`, §Base
+    de données au premier déploiement) l'ont été sur MariaDB 11.4.5 ; Oracle
+    MySQL 8 reste à valider sur l'hôte réel.
 
 ## Auteur
 

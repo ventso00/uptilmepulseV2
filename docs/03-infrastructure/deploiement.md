@@ -2,8 +2,9 @@
 
 ## État réel de la chaîne de déploiement
 
-À lire avant tout le reste, parce que deux affirmations optimistes de versions
-antérieures de cette documentation ont été corrigées ici :
+À lire avant tout le reste : deux affirmations optimistes de versions
+antérieures de cette documentation y ont été corrigées, et la troisième est une
+mesure ajoutée le 2026-10-19.
 
 - **le bundle de production démarre sans les dépendances de développement, mais
   l'image Docker n'a jamais été construite**. Le blocage d'import qui tuait
@@ -12,6 +13,10 @@ antérieures de cette documentation ont été corrigées ici :
   machine de développement : `docker build` et `docker run` n'ont été exécutés
   par personne. Ce qui est prouvé, c'est le bundle ; ce qui reste à prouver,
   c'est l'image.
+- **les huit migrations passent sur une base vide, mais sur MariaDB**. Rejouées
+  le 2026-10-19 sur un schéma jetable local, idempotentes au second passage, et
+  le bundle de production démarré dessus (§« Base de données au premier
+  déploiement »). Oracle MySQL 8 n'a jamais reçu ce SQL.
 - **aucun pipeline n'a jamais été exécuté à distance**. Le dépôt n'a pas de
   remote et ne porte qu'une histoire locale (le compte courant se lit avec
   `git rev-list --count 979ed3a..HEAD`) ; le workflow CI décrit plus bas est
@@ -189,6 +194,35 @@ drizzle-kit migrate`, `pnpm db:migrate` = `drizzle-kit migrate` seulement
    base vide, et l'inscription est verrouillée sur l'e-mail propriétaire : voir
    `docs/05-exploitation/prise-en-main.md`.
 
+**La chaîne est maintenant exécutée sur base vierge** (mesure du 2026-10-19).
+Un schéma jetable est créé sur le serveur du poste (`CREATE DATABASE
+up_fresh_verify`), puis `npx drizzle-kit migrate` est lancé avec un
+`DATABASE_URL` pointant dessus. Les huit fichiers passent : `__drizzle_migrations`
+compte huit lignes, la base a quatorze tables, soit treize tables applicatives
+plus le journal, et `plans` contient exactement les trois paliers attendus
+(free 3 moniteurs, pro 25, business 100, tous les trois à `minIntervalSeconds`
+300). Un second `drizzle-kit migrate` sur la même base ne lève aucune erreur et
+ne bouge ni le journal (huit lignes) ni `plans` (trois lignes) : la commande est
+idempotente, ce que le critère 2 de la §13 du cahier des charges revendiquait
+sans l'avoir jamais mesuré. La contrainte `UNIQUE (kind, periodKey)` de
+`qa_runs` est présente sous le nom `qa_runs_kind_period_unique`, lue dans
+`information_schema.STATISTICS` — c'est le verrou du digest quotidien, et son
+existence n'était jusqu'ici affirmée que par un commentaire de test.
+
+Le bundle de production, démarré sur cette base avec `PORT=3001`, a répondu
+`200` sur `/`, `/dashboard`, `/status/demo-services`, `/support` et
+`/api/plans`, `401` sur `/api/monitors` et `/api/qa/overview`, et son journal
+porte `qa_self_test`, `qa_daily_digest` puis `scheduler_tick` sans aucune ligne
+d'erreur. Le schéma jetable a été supprimé après mesure, la base de travail n'a
+pas été touchée.
+
+Réserve à ne pas perdre : la cible était **MariaDB 11.4.5**, pas Oracle MySQL.
+Le dialecte déclaré est `mysql` (`drizzle.config.ts:11`) et le pilote est
+`mysql2`, donc le SQL produit est commun aux deux, mais un MySQL 8 hébergé
+garde ses comportements propres (charset et `sql_mode` par défaut, `TIMESTAMP`
+en fuseau serveur). La même chaîne reste à rejouer une fois sur l'hôte réel,
+et c'est ce que réclame la checklist ci-dessous.
+
 Vérification : `GET /api/health` ne teste **pas** la base
 (`server/_core/index.ts:41-44`) — un `ok` là-bas ne prouve que le bind TCP. Le
 témoin de santé réel est la ligne `scheduler_tick` dans les logs
@@ -365,7 +399,10 @@ URL de dépôt et un jeton.
 check && pnpm test && pnpm build` — les six contrôles verts sur la machine
    qui pousse.
 2. La base cible existe, son fuseau est UTC, et les huit migrations y ont été
-   appliquées depuis un environnement complet (pas depuis le conteneur).
+   appliquées depuis un environnement complet (pas depuis le conteneur). La
+   chaîne est prouvée sur base vierge locale (§« Base de données au premier
+   déploiement »), mais sur MariaDB : le même jeu reste à rejouer sur le MySQL
+   de production.
 3. `DATABASE_URL` et `UPTIMEPULSE_ENCRYPTION_KEY` (≥ 16 caractères) sont
    injectés ; `APP_BASE_URL` pointe sur l'origine publique exacte.
 4. Le conteneur démarre. `docker build` puis `docker run` n'ont **jamais été

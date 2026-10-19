@@ -183,6 +183,15 @@ confirmé par `pnpm exec vitest run` (« Tests 223 passed (223) »).
   fumée conteneur CI (`ci.yml:39-53`) touche un process réel, mais **sans base
   de données** (`ci.yml` ne fournit aucun `DATABASE_URL`, et le handler fumé ne
   consulte rien : `server/_core/index.ts:41-44`).
+  Deux de ces trous ont été comblés **à la main, sans automatisation**, le
+  2026-10-19 : la chaîne complète `0000`→`0007` a été rejouée sur un schéma
+  local vierge (huit lignes au journal, quatorze tables, `plans` à trois
+  paliers, second `migrate` sans effet), et l'index `qa_runs_kind_period_unique`
+  a été lu dans `information_schema.STATISTICS` sur ce schéma neuf. La mesure,
+  ses chiffres et sa réserve (MariaDB 11.4.5, pas Oracle MySQL) tiennent dans
+  `docs/03-infrastructure/deploiement.md`, §« Base de données au premier
+  déploiement ». Rien de tout cela n'est rejouable par la CI : tant qu'aucun
+  service de base n'y est déclaré, la porte reste manuelle.
 
 ## 5. Ce qui n'est testé du tout
 

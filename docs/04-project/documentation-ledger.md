@@ -324,12 +324,19 @@ citations qui pointaient dessus ont été repositionnées.
 La phase « finalisation opérationnelle » ne peut pas prouver ce qui exige un
 serveur MySQL ou un dépôt distant. Ce qui a pu être mesuré ici, le 2026-10-19 :
 
-- **Chaîne de migrations à jour.** `npx drizzle-kit generate` répond « No
-  schema changes, nothing to migrate » et ne crée aucun fichier : `git status`
-  reste propre après la commande. Le schéma TypeScript et les huit snapshots de
-  `shared/db/meta/_journal.json` sont alignés. Rejouer `0000` à `0007` sur une
-  base vide n'est pas fait, et la raison est écrite dans
-  `docs/05-exploitation/prise-en-main.md` §3.
+- **Chaîne de migrations rejouée sur base vierge.** `npx drizzle-kit generate`
+  d'abord répond « No schema changes, nothing to migrate » et ne crée aucun
+  fichier (`git status` reste propre) : le schéma TypeScript et les huit
+  snapshots de `shared/db/meta/_journal.json` sont alignés. La chaîne a ensuite
+  été exécutée pour de vrai sur un schéma jetable du serveur local
+  (`CREATE DATABASE up_fresh_verify`, puis deux `drizzle-kit migrate`) : huit
+  lignes au journal, quatorze tables dont trois paliers dans `plans`,
+  `qa_runs_kind_period_unique` présent, second passage sans effet ni erreur, et
+  le bundle de production démarré sur cette base (port 3001) servant six `200`
+  et deux `401` avec `scheduler_tick` dans ses logs. Le schéma a été supprimé
+  après mesure, `uptimepulse` n'a pas été touché. Réserves écrites dans
+  `docs/03-infrastructure/deploiement.md` : la cible était MariaDB 11.4.5, et le
+  trou n'est pas comblé pour **Oracle MySQL** ni automatisé dans la CI.
 - **Compatibilité des dépendances.** Les 41 entrées de `dependencies` et
   `devDependencies` (`package.json:21-65`, 24 + 17) sont toutes installées et
   satisfont leur plage déclarée, comparées paquet par paquet. Le workspace
