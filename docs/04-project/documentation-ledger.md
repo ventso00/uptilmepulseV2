@@ -282,10 +282,12 @@ citations qui pointaient dessus ont été repositionnées.
   cible (par exemple `api.publicStatus` `:290-294`, `validateCallbackPath`
   `:118-125`, `packageManager` `:66`).
 - **Deux citations cassées trouvées par l'outil, et deux affirmations fausses
-  trouvées en chemin.** `dispatcher.ts:248-255` pointait au-delà des 244 lignes
-  du fichier (la fonction est à `:236-243`) ; `digest.test.ts:37` idem — et son
-  commentaire disait « limites digest » alors que ce fichier ne teste que
-  `digestPeriodKey:38`, les fonctions de fenêtre et de plafond étant justement
+  trouvées en chemin.** `server/notifications/dispatcher.ts` était cité aux
+  lignes 248–255 alors que le fichier en compte 244 — la fonction est en
+  réalité aux lignes 236–243 ; `server/qa/digest.test.ts` était renvoyé à sa
+  ligne 37 pour 36 lignes. Et le commentaire qui accompagnait cette dernière
+  disait « limites digest », alors que ce fichier ne teste que
+  `digestPeriodKey:38` : les fonctions de fenêtre et de plafond sont justement
   sans test. Le texte suit la mesure, pas l'ancienne étiquette.
 - **Outil ajouté au dépôt** : `scripts/check-citations.mjs` (aucune
   dépendance, `node scripts/check-citations.mjs`). Il résout les chemins

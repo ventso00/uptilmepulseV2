@@ -13,7 +13,7 @@ antérieures de cette documentation ont été corrigées ici :
   par personne. Ce qui est prouvé, c'est le bundle ; ce qui reste à prouver,
   c'est l'image.
 - **aucun pipeline n'a jamais été exécuté à distance**. Le dépôt n'a pas de
-  remote et porte sept commits ; le workflow CI décrit plus bas est écrit, pas
+  remote et porte huit commits ; le workflow CI décrit plus bas est écrit, pas
   éprouvé. Son étape `docker build` + `curl /api/health` n'a jamais rien validé.
 
 Le reste de la page documente ce qui est prêt, ce qui bloque, et comment combler
