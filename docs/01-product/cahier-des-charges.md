@@ -4,21 +4,23 @@ Document de référence contractuel : ce que le produit est censé faire, ce qu'
 
 ## 0. Fiche d'identité
 
-| Champ                               | Valeur                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Produit                             | UptimePulse — surveillance de disponibilité HTTP/HTTPS avec page de statut publique et module qualité/support                                                                                                                                                                                                          |
-| Dépôt déclaré                       | `https://github.com/ventso00/uptimepulse` — **pas encore créé**                                                                                                                                                                                                                                                        |
-| Dépôt réellement configuré en local | aucun remote : `git remote -v` ne renvoie rien. La mention d'un `UptimePusle.git` (faute de frappe) a été mesurée le 2026-10-12 sur une autre machine de développement ; le dépôt local repart sans remote                                                                                                             |
-| Branche de travail                  | `refactor/restructure-architecture`, huit commits depuis `979ed3a chore: baseline snapshot of the working tree` au 2026-10-19, avant les commits de documentation qui ont suivi ; `main` s'arrête à `df4db5c` et en compte cinq. Le compte bouge à chaque commit : se relire avec `git rev-list --count 979ed3a..HEAD` |
-| État de publication                 | Aucun commit poussé ; la CI (`ci.yml`, déclenchée sur `push`/PR vers `main`) n'a donc **jamais** été exécutée                                                                                                                                                                                                          |
-| Exécution validée                   | Build de production servi localement sur `http://127.0.0.1:3000`, portes au vert, 23 fichiers / 223 tests (mesuré le 2026-10-19)                                                                                                                                                                                       |
-| Date du document                    | 2026-10-19                                                                                                                                                                                                                                                                                                             |
+| Champ                               | Valeur                                                                                                                                                                                                                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Produit                             | UptimePulse — surveillance de disponibilité HTTP/HTTPS avec page de statut publique et module qualité/support                                                                                                                                                                                      |
+| Dépôt déclaré                       | `https://github.com/ventso00/uptimepulse` — **pas encore créé**                                                                                                                                                                                                                                    |
+| Dépôt réellement configuré en local | aucun remote : `git remote -v` ne renvoie rien. La mention d'un `UptimePusle.git` (faute de frappe) a été mesurée le 2026-10-12 sur une autre machine de développement ; le dépôt local repart sans remote                                                                                         |
+| Branche de travail                  | `refactor/restructure-architecture`, fils direct de `main` : `git merge-base main HEAD` rend `df4db5c`, la pointe de `main`. La branche n'a donc rien à réconcilier et se fast-forward ; le nombre de commits ajoutés après la baseline `979ed3a` se lit avec `git rev-list --count 979ed3a..HEAD` |
+| État de publication                 | Aucun commit poussé ; la CI (`ci.yml`, déclenchée sur `push`/PR vers `main`) n'a donc **jamais** été exécutée                                                                                                                                                                                      |
+| Exécution validée                   | Build de production servi localement sur `http://127.0.0.1:3000`, portes au vert, 23 fichiers / 223 tests (mesuré le 2026-10-19)                                                                                                                                                                   |
+| Date du document                    | 2026-10-19                                                                                                                                                                                                                                                                                         |
 
-L'historique Git commence par un instantané du répertoire de travail : les six
-commits qui suivent portent sur du code et de la documentation déjà écrits,
-aucune archéologie du développement antérieur n'est donc possible à partir du
-dépôt, et tout ce qui précède vient de la lecture du code ou d'une exécution
-mesurée.
+L'historique Git commence par un instantané du répertoire de travail :
+`979ed3a chore: baseline snapshot of the working tree`. Les commits qui suivent
+portent sur du code et de la documentation déjà écrits, aucune archéologie du
+développement antérieur n'est donc possible à partir du dépôt, et tout ce qui
+précède vient de la lecture du code ou d'une exécution mesurée. Le compte de
+ces commits n'est pas recopié ici : il change au commit suivant, et
+`git rev-list --count 979ed3a..HEAD` le rend à la demande.
 
 **Méthode.** Chaque affirmation de ce document provient de la lecture du code ou d'une exécution mesurée. Rien n'est déduit d'un nom de fichier, d'un bouton ou d'une documentation existante. Quand un écart est constaté entre la documentation et le code, l'écart est écrit §11.
 
