@@ -6,7 +6,57 @@ Le navigateur consomme des endpoints REST sous `/api` pour les interactions appl
 
 ## Tables
 
-Les tables métier sont `users`, `user_credentials`, `sessions`, `plans`, `monitors`, `ping_logs`, `incidents`, `notification_channels`, `notification_deliveries`, `status_pages` et les buckets de rate limit si nécessaires. Le module qualité ajoute `qa_tickets`, `qa_ticket_events` (chronologie à deux visibilités, `public` / `internal`) et `qa_runs` (registre d’idempotence, unique sur `(kind, periodKey)`). La table `plans` porte les quotas éditables du modèle freemium ; `users.planId` (nullable, `NULL` = palier intégré `free`) et `users.trialEndsAt` rattachent un compte à un palier, `monitors.keyword` et `monitors.keywordMode` portent l’assertion de contenu. Les index prioritaires sont `(monitor_id, checked_at DESC)`, `(enabled, next_check_at)`, `(user_id, email_normalized)`, `(expires_at)`, `(user_id, status)` pour la file de tickets et `plans_slug_unique`. `qa_tickets.reporter_token` et `qa_tickets.fingerprint` sont uniques. Les migrations sont additives et versionnées.
+**Convention d'écriture à connaître avant d'écrire du SQL.** Le schéma
+Drizzle (`shared/db/schema.ts`) nomme ses colonnes en `camelCase` et ne passe
+aucun `snake_case` : les colonnes réelles sont donc `checkedAt`, `nextCheckAt`,
+`emailNormalized`, `expiresAt`, `reporterToken`, `monitorId`. Le générateur
+Drizzle les entoure d'accents graves dans le SQL publié (`shared/db/*.sql`), ce
+qui signifie qu'une requête console doit écrire `` `checkedAt` `` ou
+`checkedAt`, jamais `checked_at`. Toute copie d'une documentation antérieure au
+projet en `snake_case` renverra `Unknown column`.
+
+Les tables métier sont `users`, `user_credentials`, `sessions`, `plans`,
+`monitors`, `ping_logs`, `incidents`, `notification_channels`,
+`notification_deliveries`, `status_pages`. Le module qualité ajoute
+`qa_tickets`, `qa_ticket_events` (chronologie à deux visibilités, `public` /
+`internal`) et `qa_runs` (registre d'idempotence). Il n'existe **aucune table de
+rate limit** : le compteur est une `Map` en mémoire de processus
+(`server/auth/rateLimit.ts:10`, bornée à 10 000 clés), comme le décrit
+`security.md`.
+
+`plans` porte les quotas éditables du modèle freemium ; `users.planId`
+(nullable, `NULL` = palier intégré `free`) et `users.trialEndsAt` rattachent un
+compte à un palier ; `monitors.keyword` et `monitors.keywordMode` portent
+l'assertion de contenu. Les index, relevés un à un depuis
+`shared/db/schema.ts` :
+
+| Table                     | Index                                          | Colonnes                                   |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------ |
+| `plans`                   | `plans_slug_unique` (unique)                   | `slug`                                     |
+| `plans`                   | `plans_sort_order_idx`                         | `sortOrder`                                |
+| `user_credentials`        | `user_credentials_email_unique` (unique)       | `emailNormalized`                          |
+| `sessions`                | `sessions_token_hash_unique` (unique)          | `tokenHash`                                |
+| `sessions`                | `sessions_user_expiry_idx`                     | `userId`, `expiresAt`                      |
+| `monitors`                | `monitors_owner_due_idx`                       | `userId`, `enabled`, `nextCheckAt`         |
+| `monitors`                | `monitors_enabled_next_check_idx`              | `enabled`, `nextCheckAt`                   |
+| `ping_logs`               | `ping_logs_monitor_checked_idx`                | `monitorId`, `checkedAt` — **sans `DESC`** |
+| `incidents`               | `incidents_monitor_status_idx`                 | `monitorId`, `status`                      |
+| `notification_channels`   | `notification_channels_user_type_idx`          | `userId`, `type`                           |
+| `notification_deliveries` | `notification_deliveries_incident_channel_idx` | `incidentId`, `channelId`                  |
+| `notification_deliveries` | `..._incident_channel_type_unique` (unique)    | `incidentId`, `channelId`, `type`          |
+| `notification_deliveries` | `notification_deliveries_retry_queue_idx`      | `status`, `createdAt`                      |
+| `status_pages`            | contraintes `unique` en colonne                | `userId`, `slug`                           |
+| `qa_tickets`              | `qa_tickets_owner_status_idx`                  | `userId`, `status`                         |
+| `qa_tickets`              | `qa_tickets_open_idx`                          | `status`, `createdAt`                      |
+| `qa_tickets`              | `qa_tickets_source_idx`                        | `source`, `createdAt`                      |
+| `qa_tickets`              | contraintes `unique` en colonne                | `reporterToken`, `fingerprint`             |
+| `qa_ticket_events`        | `qa_ticket_events_ticket_created_idx`          | `ticketId`, `createdAt`                    |
+| `qa_runs`                 | `qa_runs_kind_period_unique` (unique)          | `kind`, `periodKey`                        |
+
+Le `DESC` absent de `ping_logs_monitor_checked_idx` est délibérément non
+documenté comme un défaut : MySQL sait parcourir un index B-tree à rebours, et
+les lectures d'historique sont triées en SQL. Les migrations sont additives et
+versionnées dans `shared/db/` (pas dans un dossier `drizzle/`).
 
 ## API
 

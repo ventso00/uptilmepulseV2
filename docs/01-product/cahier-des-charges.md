@@ -4,15 +4,19 @@ Document de référence contractuel : ce que le produit est censé faire, ce qu'
 
 ## 0. Fiche d'identité
 
-| Champ                               | Valeur                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Produit                             | UptimePulse — surveillance de disponibilité HTTP/HTTPS avec page de statut publique et module qualité/support |
-| Dépôt déclaré                       | `https://github.com/ventso00/uptimepulse`                                                                     |
-| Dépôt réellement configuré en local | `https://github.com/ventso00/UptimePusle.git` → `Repository not found` (mesuré le 2026-10-12)                 |
-| Branche de travail                  | `refactor/restructure-architecture` (3 commits au-dessus de `main` @ `0ebf423`)                               |
-| État de publication                 | Aucun commit poussé ; la CI n'a donc jamais été exécutée à distance                                           |
-| Exécution validée                   | Build de production servi localement sur `http://127.0.0.1:3000`, portes au vert, 219 tests                   |
-| Date du document                    | 2026-10-12                                                                                                    |
+| Champ                               | Valeur                                                                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Produit                             | UptimePulse — surveillance de disponibilité HTTP/HTTPS avec page de statut publique et module qualité/support                                                                                              |
+| Dépôt déclaré                       | `https://github.com/ventso00/uptimepulse` — **pas encore créé**                                                                                                                                            |
+| Dépôt réellement configuré en local | aucun remote : `git remote -v` ne renvoie rien. La mention d'un `UptimePusle.git` (faute de frappe) a été mesurée le 2026-10-12 sur une autre machine de développement ; le dépôt local repart sans remote |
+| Branche de travail                  | `main`, un seul commit : `979ed3a chore: baseline snapshot of the working tree` (2026-10-19)                                                                                                               |
+| État de publication                 | Aucun commit poussé ; la CI (`ci.yml`, déclenchée sur `push`/PR vers `main`) n'a donc **jamais** été exécutée                                                                                              |
+| Exécution validée                   | Build de production servi localement sur `http://127.0.0.1:3000`, portes au vert, 22 fichiers / 219 tests (mesuré le 2026-10-19)                                                                           |
+| Date du document                    | 2026-10-19                                                                                                                                                                                                 |
+
+L'historique Git est un commit unique : aucune archéologie n'est possible à
+partir du dépôt, et tout ce qui précède vient de la lecture du code ou d'une
+exécution mesurée.
 
 **Méthode.** Chaque affirmation de ce document provient de la lecture du code ou d'une exécution mesurée. Rien n'est déduit d'un nom de fichier, d'un bouton ou d'une documentation existante. Quand un écart est constaté entre la documentation et le code, l'écart est écrit §11.
 
@@ -56,24 +60,24 @@ La chaîne visée, dans l'ordre : observation → détection d'anomalie → coll
 
 Trois populations, deux interfaces, un seul compte opérable.
 
-| Population                   | Compte                                                                                   | Ce qu'elle peut faire                                                            |
-| ---------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Créateur / exploitant        | un seul, identifié par `UPTIMEPULSE_OWNER_EMAIL` (défaut `rajaomanjatoventso@gmail.com`) | tout le tableau de bord sombre, `/qa`, `/settings`, `/console`                   |
-| Propriétaire de site observé | aucun                                                                                    | lit `/status/:slug`, signale un problème, suit son dossier sur `/support/:token` |
-| Visiteur                     | aucun                                                                                    | lit la landing, la page de statut, tente `/register`                             |
+| Population                   | Compte                                                                                                | Ce qu'elle peut faire                                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Créateur / exploitant        | un seul, identifié par `UPTIMEPULSE_OWNER_EMAIL` (défaut l'adresse posée dans `server/auth/owner.ts`) | tout le tableau de bord, `/qa`, `/settings`, `/console` — même régime clair que les surfaces clientes depuis ADR-018 |
+| Propriétaire de site observé | aucun                                                                                                 | lit `/status/:slug`, signale un problème, suit son dossier sur `/support/:token`                                     |
+| Visiteur                     | aucun                                                                                                 | lit la landing, la page de statut, tente `/register`                                                                 |
 
 Règles d'accès mesurées dans le code :
 
-- `POST /api/auth/register` refuse toute adresse autre que celle du propriétaire **avant** de hacher le mot de passe : `403 REGISTRATION_CLOSED` (`server/auth/routes.ts:57`, `server/auth/owner.ts:8-17`).
+- `POST /api/auth/register` refuse toute adresse autre que celle du propriétaire **avant** de hacher le mot de passe : `403 REGISTRATION_CLOSED` (`server/auth/routes.ts:89-95`, `server/auth/owner.ts:8-21`).
 - Une adresse valide mais non propriétaire, un mot de passe erroné et un e-mail inconnu renvoient le **même** `401 INVALID_CREDENTIALS` ; l'e-mail inconnu est tout de même vérifié contre un hash factice pour que le coût bcrypt soit identique (`server/auth/routes.ts:17-18, 181-202`).
 - Un compte valide mais non propriétaire est refusé à chaque appel protégé : `403 ACCESS_RESERVED` dans `requireUser` (`server/_core/http.ts:61-95`).
 - La session est un cookie `uptimepulse_session`, `httpOnly`, `secure`, `sameSite=none`, 30 jours ; le serveur ne stocke que son empreinte SHA-256 (`server/auth/session.ts:8-39`).
 
-![Écran de connexion, régime sombre](../images/04-connexion.png)
-_Figure 2 — `/login`. Le formulaire est le seul chemin d'entrée de l'espace d'exploitation ; une adresse qui n'est pas celle du propriétaire y est refusée sans distinction du mauvais mot de passe._
+![Écran de connexion, capturé alors que la console rendait encore en régime sombre](../images/04-connexion.png)
+_Figure 2 — `/login`. Le formulaire est le seul chemin d'entrée de l'espace d'exploitation ; une adresse qui n'est pas celle du propriétaire y est refusée sans distinction du mauvais mot de passe. Cette capture montre l'ancien régime sombre : depuis ADR-018, `/login` rend en clair comme le reste du produit._
 
 ![Écran d'inscription](../images/05-inscription.png)
-_Figure 3 — `/register`. La page reste ouverte pour que le créateur puisse réclamer son compte ; elle refuse toute autre adresse._
+_Figure 3 — `/register`. La page reste ouverte pour que le créateur puisse réclamer son compte ; elle refuse toute autre adresse. Même réserve de régime que pour la figure 2._
 
 ## 5. Exigences fonctionnelles
 
@@ -124,15 +128,15 @@ L'ordre d'exécution est contractuel ; il est reproduit tel quel depuis `server/
 
 ### 5.4 Statistiques
 
-| id    | Exigence                | Règle                                                                                                                                                                                                                                                                      | Statut |
-| ----- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| EF-14 | Uptime                  | `checks réussis / checks enregistrés × 100`, arrondi à 2 décimales. C'est un uptime **compté en checks**, pas mesuré en temps : un arrêt de l'ordonnanceur ne compte ni comme succès ni comme panne ; 0 ligne ⇒ `null` (`server/monitors/stats.ts:30-33`)                  | ACQUIS |
-| EF-15 | Fenêtre tableau de bord | 30 jours                                                                                                                                                                                                                                                                   | ACQUIS |
-| EF-16 | Fenêtre page publique   | 24 h / 7 j / 30 j / 90 j glissants, 90 j = fenêtre de rétention                                                                                                                                                                                                            | ACQUIS |
-| EF-17 | Percentiles             | p50 / p90 / p95 / **max**, rang le plus proche, échantillon exact ; échantillon = 7 derniers jours de checks EN LIGNE, borné à 4 032 lignes par service, valeur **prouvée** non tronquante à l'intervalle minimum de 300 s (`server/statuspages/analysis.ts:36-39, 95-99`) | ACQUIS |
-| EF-18 | Calendrier horaire      | 168 buckets UTC fixes ; un trou reste « pas encore de donnée », jamais « panne »                                                                                                                                                                                           | ACQUIS |
-| EF-19 | Latence serveur         | `TTFB − DNS − TCP − TLS`, plancher 0                                                                                                                                                                                                                                       | ACQUIS |
-| EF-20 | Objectif                | 99,9 % affiché comme **repère de lecture**, pas comme contrat ; budget d'erreur calculé sur les checks réellement mesurés                                                                                                                                                  | ACQUIS |
+| id    | Exigence                | Règle                                                                                                                                                                                                                                                                                                                                                        | Statut |
+| ----- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| EF-14 | Uptime                  | `checks réussis / checks enregistrés × 100`, arrondi à 2 décimales. C'est un uptime **compté en checks**, pas mesuré en temps : un arrêt de l'ordonnanceur ne compte ni comme succès ni comme panne ; 0 ligne ⇒ `null` (`server/monitors/stats.ts:30-33`)                                                                                                    | ACQUIS |
+| EF-15 | Fenêtre tableau de bord | 30 jours                                                                                                                                                                                                                                                                                                                                                     | ACQUIS |
+| EF-16 | Fenêtre page publique   | 24 h / 7 j / 30 j / 90 j glissants, 90 j = fenêtre de rétention                                                                                                                                                                                                                                                                                              | ACQUIS |
+| EF-17 | Percentiles             | p50 / p90 / p95 / **max**, rang le plus proche, échantillon exact ; échantillon = 7 derniers jours de checks EN LIGNE, borné par `LATENCY_SAMPLE_CAP_PER_MONITOR` = 4 320 lignes par service (dont 4 032 = le pire cas théorique à 300 s), valeur **prouvée** non tronquante à l'intervalle minimum de 300 s (`server/statuspages/analysis.ts:36-39, 95-99`) | ACQUIS |
+| EF-18 | Calendrier horaire      | 168 buckets UTC fixes ; un trou reste « pas encore de donnée », jamais « panne »                                                                                                                                                                                                                                                                             | ACQUIS |
+| EF-19 | Latence serveur         | `TTFB − DNS − TCP − TLS`, plancher 0                                                                                                                                                                                                                                                                                                                         | ACQUIS |
+| EF-20 | Objectif                | 99,9 % affiché comme **repère de lecture**, pas comme contrat ; budget d'erreur calculé sur les checks réellement mesurés                                                                                                                                                                                                                                    | ACQUIS |
 
 ### 5.5 Page de statut publique
 
@@ -145,7 +149,7 @@ L'ordre d'exécution est contractuel ; il est reproduit tel quel depuis `server/
 | EF-25 | Méthodologie exposée  | panneau dépliable qui énonce les seuils, les fenêtres, la rétention et le mode de calcul                | ACQUIS |
 
 ![Page de statut publique, haut de page](../images/03-statut-public.png)
-_Figure 4 — `/status/demo-services`, régime clair. Verdict chiffré, problèmes rencontrés, bande de synthèse et légende. Les chiffres affichés proviennent de la base locale de développement ; la page est rendue avec `prefers-reduced-motion` forcé pour la capture._
+_Figure 4 — `/status/<slug>`, régime clair. Verdict chiffré, problèmes rencontrés, bande de synthèse et légende. Les chiffres affichés proviennent de la base locale de développement au moment de la capture et ne sont pas rejouables ; la page est rendue avec `prefers-reduced-motion` forcé pour la capture._
 
 ![Comparaison des services](../images/10-statut-comparaison.png)
 _Figure 5 — Tableau de comparaison : uptime par fenêtre, p50/p95, incidents, jours restants de certificat. La colonne en gras est la fenêtre retenue pour le verdict._
@@ -154,7 +158,7 @@ _Figure 5 — Tableau de comparaison : uptime par fenêtre, p50/p95, incidents, 
 _Figure 6 — Bloc d'analyse par service : disponibilité par fenêtre, percentiles, décomposition DNS/TCP/TLS/serveur, causes d'échec, incidents et réparation, certificat, et « comment ce service est surveillé »._
 
 ![Panneau méthodologie](../images/12-statut-methodologie.png)
-_Figure 7 — Le panneau méthodologie déplie les règles exactes : 3 échecs pour confirmer, 2 succès pour refermer, échantillon borné à 4 032 checks, 90 jours de rétention, 99,9 % comme repère et non comme contrat._
+_Figure 7 — Le panneau méthodologie déplie les règles exactes : 3 échecs pour confirmer, 2 succès pour refermer, échantillon borné au `latencySampleCap` réellement publié (4 320), 90 jours de rétention, 99,9 % comme repère et non comme contrat._
 
 ### 5.6 Qualité et support
 
@@ -372,23 +376,57 @@ CI (`.github/workflows/ci.yml`) : `pull_request` et `push` sur `main` ; installa
 
 ## Annexe A — Constantes contractuelles
 
-`CLAIM_LEASE` 360 000 ms · `MAX_RESPONSE_BYTES` 262 144 · `MAX_REDIRECTS` 3 · 22 CIDR refusés · `failureThreshold` 3 · `recoveryThreshold` 2 · intervalle 300–86 400 s · timeout 1 000–30 000 ms · mot de passe 12–128 · bcrypt 12 · session 32 octets / 30 j · `QA_OVERDUE_AFTER_MINUTES` 2 880 · tick 30 000 ms (+2 000 ms de démarrage) · lot 50 / concurrence 10 · retries notification 20 par passe, ≥ 60 s, 3 tentatives · rétention 90 j, lot 1 000 · `STATUS_WINDOW_DAYS` 90 · `LATENCY_WINDOW_DAYS` 7 · échantillon 4 032 · buckets horaires 168 · chronologie d'incidents 40 · causes top 6 · certificat ≤ 30 j · objectif 99,9 % · limites de débit 5/20/10/40 par 15 min (auth), 30/60 s (monitors), 60/60 s (admin, QA), 20/60 s (page de statut), 60/60 s (lecture publique), 20/h (messages client), 6/min (passes forcées), carte bornée à 10 000 buckets · HTTP 409 `QUOTA_EXCEEDED`, 403 `FEATURE_UNAVAILABLE`, 400 `VALIDATION_ERROR` pour le dépassement de limite de plan.
+Location de départ **6 minutes** : `server/checks/engine.ts:96` écrit
+`nextCheckAt = Date.now() + 6 * 60 * 1000` dans l'UPDATE conditionnel qui sert
+de claim atomique — il n'existe **aucun symbole `CLAIM_LEASE`** dans le dépôt, la
+version précédente de cette annexe en inventait un.
+
+`MAX_RESPONSE_BYTES` 262 144 · `MAX_REDIRECTS` 3 · 22 CIDR refusés ·
+`failureThreshold` 3 · `recoveryThreshold` 2 · intervalle 300–86 400 s · timeout
+1 000–30 000 ms · mot de passe 12–128 · e-mail ≤ 320 · bcrypt 12 · session 32
+octets / 30 j · `QA_OVERDUE_AFTER_MINUTES` 2 880 · tick 30 000 ms (+2 000 ms de
+démarrage) · lot 50 / concurrence 10 · retries notification 20 par passe,
+≥ 60 s d'âge, 3 tentatives **dans la même passe** (`dispatcher.ts:53`), le
+compteur `attempts` s'accumule entre les passes · rétention 90 j, lot 1 000 ·
+`STATUS_WINDOW_DAYS` 90 · `LATENCY_WINDOW_DAYS` 7 · échantillon 4 320 par
+moniteur (dont 4 032 de pire cas à 300 s) · buckets horaires
+`LATENCY_WINDOW_DAYS * 24` = 168 (`analysis.ts:516`) · chronologie d'incidents 40 · causes top 6 · certificat ≤ 30 j ·
+objectif 99,9 % en repère · plan `free` 3 moniteurs / `pro` 25 / `business` 100 ·
+limites de débit : 5 par 15 min (`register:{ip}`), 20 par 15 min
+(`register-ip:{ip}`), 10 par 15 min (`login:{ip}:{email}`), 40 par 15 min
+(`login-ip:{ip}`), 5 par 15 min (`password:{userId}` et `channel:{userId}`),
+3 par 15 min (`channel-test:{userId}`), 30/min (écritures monitors), 20/min
+(écritures page de statut), 60/min (lecture publique, écritures admin et QA,
+lecture de suivi client), 10 par 15 min (intake QA), 20/h (messages client),
+6/min (passes forcées) ; carte en mémoire bornée à 10 000 buckets avec balayage
+et éviction FIFO · HTTP 409 `QUOTA_EXCEEDED`, 403 `FEATURE_UNAVAILABLE`,
+400 `VALIDATION_ERROR` pour le dépassement de limite de plan.
 
 ## Annexe B — Index des captures
 
-| Fichier                      | Contenu                                                        |
-| ---------------------------- | -------------------------------------------------------------- |
-| `01-landing-hero.png`        | Hero de `/` en régime clair, 1440 × 900                        |
-| `02-landing-entier.png`      | Landing complète, 1440 × 4 134                                 |
-| `03-statut-public.png`       | `/status/demo-services` : verdict, problèmes, bandeau, légende |
-| `04-connexion.png`           | `/login` en régime sombre                                      |
-| `05-inscription.png`         | `/register` en régime sombre                                   |
-| `06-landing-observation.png` | Section « De l'observation à l'action »                        |
-| `07-landing-client-voit.png` | Section « Ce qu'un client voit, sans compte ni effort »        |
-| `08-landing-verifie.png`     | Section « Ce qu'UptimePulse vérifie, concrètement »            |
-| `09-landing-limites.png`     | Section « Des limites lisibles, pas de surprises »             |
-| `10-statut-comparaison.png`  | Tableau comparatif des services                                |
-| `11-statut-service.png`      | Bloc d'analyse d'un service                                    |
-| `12-statut-methodologie.png` | Panneau méthodologie dépliable                                 |
+| Fichier                      | Contenu                                                   |
+| ---------------------------- | --------------------------------------------------------- |
+| `01-landing-hero.png`        | Hero de `/` en régime clair, 1440 × 900                   |
+| `02-landing-entier.png`      | Landing complète, 1440 × 4 134                            |
+| `03-statut-public.png`       | `/status/<slug>` : verdict, problèmes, bandeau, légende   |
+| `04-connexion.png`           | `/login` — capturé **avant** ADR-018, en régime sombre    |
+| `05-inscription.png`         | `/register` — capturé **avant** ADR-018, en régime sombre |
+| `06-landing-observation.png` | Section « De l'observation à l'action »                   |
+| `07-landing-client-voit.png` | Section « Ce qu'un client voit, sans compte ni effort »   |
+| `08-landing-verifie.png`     | Section « Ce qu'UptimePulse vérifie, concrètement »       |
+| `09-landing-limites.png`     | Section « Des limites lisibles, pas de surprises »        |
+| `10-statut-comparaison.png`  | Tableau comparatif des services                           |
+| `11-statut-service.png`      | Bloc d'analyse d'un service                               |
+| `12-statut-methodologie.png` | Panneau méthodologie dépliable                            |
 
 Les six captures d'écrans d'exploitation restent à produire selon la procédure décrite §10 (réserve 2).
+
+**Provenance à lire avant de citer une image.** Ces PNG ont été pris sur une base
+de développement qui portait notamment le slug `demo-services` et les comptes
+`demo@`. Rien de tout cela n'est livré avec le dépôt : l'unique seed du projet
+écrit les trois paliers de `plans`. Les chiffres visibles sur `03-`, `10-`, `11-`
+et `12-` sont donc ceux d'un instant donné et ne sont pas reproductibles ; pour
+les reproduire, il faut créer un moniteur puis une page de statut depuis
+`/settings`, comme l'explique `status-page-analysis.md` §9. Les captures `04-`
+et `05-` montrent un régime sombre que le produit n'affiche plus (ADR-018) ; elles
+sont conservées comme trace de la décision, pas comme état actuel.

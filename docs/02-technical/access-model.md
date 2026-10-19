@@ -2,8 +2,7 @@
 
 UptimePulse est un produit **à opérateur unique**. Cette page est la source de
 vérité sur qui peut faire quoi : elle explique le verrou d'authentification,
-les surfaces publiques, et pourquoi deux régimes visuels coexistent dans le
-même client.
+les surfaces publiques, et le choix d'un régime visuel unique.
 
 ## Qui authentifie
 
@@ -28,10 +27,14 @@ Une seule adresse peut obtenir une session : celui du créateur.
   passe : la route ne révèle pas si une adresse existe ou si elle est
   réservée.
 
-Conséquence pratique : les comptes de démonstration créés avant ce verrou
-(`demo@uptimepulse.dev`, `demo@uptimepulse.local`) sont toujours en base mais
-ne peuvent plus ouvrir de session. Les suppressions de comptes restent un
-geste d'administrateur dans la base, pas une fonction produit.
+Conséquence pratique : un compte créé avant ce verrou (les adresses de
+démonstration utilisées pendant le développement, `demo@uptimepulse.dev` et
+`demo@uptimepulse.local`) ne peut plus ouvrir de session, même avec le bon mot
+de passe. Le dépôt ne livre **aucun seed** de ce genre de ligne — la base d'une
+installation neuve ne contient que les trois paliers de `plans` — donc ces
+comptes n'existent que là où ils ont réellement été créés à la main. Les
+suppressions de comptes restent un geste d'administrateur dans la base, pas une
+fonction produit.
 
 ## Ce que le client regarde sans compte
 
@@ -51,33 +54,45 @@ max-age=30`, rate-limit par IP) ; `POST /api/public/qa/tickets` est plafonné à
 n'expose que les événements `public`, le jeton de 16 octets aléatoires faisant
 office de secret.
 
-## Deux régimes visuels, un seul mécanisme
+## Un seul régime visuel, et pourquoi
 
-`client/src/App.tsx` dérive le thème de la route — pas d'un réglage
-utilisateur :
+Le client rend **en clair** sur l'intégralité des routes, vitrine, analyse
+publique et console opérateur alike. `client/src/App.tsx:19-28` le dit dans son
+commentaire et le pose dans le code : un unique
+`<ThemeProvider defaultTheme="light">` enveloppe le `<Switch>`, et rien ne
+dérive le thème du chemin.
 
-```ts
-const isClientRoute = (path: string) =>
-  path === "/" || /^\/(status|support)\//.test(path);
-```
+Le régime sombre a existé (ADR-017, aujourd'hui **reversé**) : il séparait les
+lectures clientes des écrans de pilotage. Il a été supprimé parce que deux
+régimes imposaient à chaque composant monté des deux côtés une double
+vérification de contraste, et que l'opérateur comme la cliente partagent
+finalement les mêmes surfaces. Le mécanisme reste en place mais dormant :
 
-Les routes clientes rendent en **clair** (`/`, `/status/:slug`,
-`/support/:token`) : leur lecteur vérifie « mon site tourne-t-il », il n'est
-pas devant un poste de pilotage. `/dashboard`, `/monitors/:id`, `/settings`,
-`/qa`, `/console`, `/login` et `/register` rendent en **sombre**, parce que
-l'opérateur y passe des heures sur des densités de données.
+- `client/src/index.css` conserve un bloc `.dark` complet (`:141-194`) sous les
+  mêmes noms de jetons que `:root`.
+- `client/src/contexts/ThemeContext.tsx` accepte encore `forcedTheme` (`:22`,
+  `:39`), `switchable` (`:32-36`, `:49-51`, `:54-58`) et expose `useTheme()`
+  (`:69-75`) : **aucun appelant** ne passe ces props et `useTheme()` n'est
+  jamais appelé par l'application.
+- Conséquence à connaître avant de réactiver le sombre :
+  `client/src/components/ui/sonner.tsx:1,5` branche le `Toaster` sur le
+  `useTheme()` de **next-themes**, alors que le provider monté est le
+  `ThemeContext` local — les toasts resteraient sur la valeur par défaut même
+  après un changement de régime.
+
+Le mécanisme des jetons, lui, est inchangé et documenté ci-dessous.
+
+## Jetons et règle d'écriture
 
 Le mécanisme tient dans `client/src/index.css` : `:root` porte les jetons
-clairs, `.dark` les mêmes noms en valeurs sombres, et `@theme inline` publie
-ces jetons comme véritables utilitaires Tailwind (`bg-page`, `bg-surface`,
-`bg-surface-2`, `text-ink`, `text-ink-soft`, `text-ink-muted`, `border-line`,
-`bg-brand`, `bg-brand-strong`, `text-state-up|down|warn`, …).
+clairs et `@theme inline` publie ces jetons comme véritables utilitaires Tailwind
+(`bg-page`, `bg-surface`, `bg-surface-2`, `text-ink`, `text-ink-soft`,
+`text-ink-muted`, `border-line`, `bg-brand`, `bg-brand-strong`,
+`text-state-up|down|warn`, …).
 
-**Règle d'écriture.** Un composant monté sur les deux régimes (`Modal`,
-`StatusBadge`, `ReportIssueDialog`, les chips de `QaChips`, `Skeleton`,
-`ErrorBoundary`) n'a pas le droit d'utiliser une couleur littérale
-(`text-slate-300`, `bg-[#0e192c]`, `border-white/10`) : il utilise les
-jetons, et le contraste se règle tout seul. Un composant réservé à la console
-peut garder ses classes sombres. Les classes `auth-input` restent
-spécifiques aux écrans d'authentification sombres ; `.field-input` est la
-version jetonnée pour les formulaires clientes.
+**Règle d'écriture.** Un composant ne doit pas s'ancrer sur une couleur
+littérale (`text-slate-300`, `bg-[#0e192c]`, `border-white/10`) quand un jeton
+existe : la valeur sémantique est ce qui permet de faire bouger tout le produit
+en un endroit. Les contrastes mesurés (WCAG 2.1 AA, 4.5:1 pour le texte de
+corps) sont la porte de sortie : `--ink-muted` a par exemple été assombri de
+`#7a7873` à `#6b6a66` parce qu'il tombait à 4.23:1 sur `--surface`.

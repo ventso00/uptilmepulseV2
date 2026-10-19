@@ -22,14 +22,14 @@ code ne les connaît pas.
 
 ## 1. Mission par mission, ce que le code fait
 
-| Mission du poste                                                 | Implémentation                                                                                                                                                   | Fichiers                                                                    |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Tester les fonctionnalités de l'application                      | 7 invariants de fonctionnement rejoués toutes les 15 minutes par l'ordonnanceur interne, plus un test fonctionnel de la page publique quotidien                  | `server/qa/selfTest.ts`, `server/qa/digest.ts`                              |
-| Analyser les problèmes signalés par les clients                  | Ticket unique par signalement, preuves du navigateur attachées d'office, lecture préliminaire générée à partir des seuls signaux présents                        | `server/qa/tickets.ts`, `server/qa/report.ts`                               |
-| Identifier bugs, comportements inattendus, problèmes d'ergonomie | `kind` = `bug` / `behaviour` / `ux` + sévérité `P1`…`P4`, modifiables à tout moment depuis le poste de traitement                                                | `shared/contracts.ts`, `client/src/components/uptime/qa/QaTicketDetail.tsx` |
-| Documenter avec étapes, preuves et attendu vs réel               | Colonnes dédiées `steps`, `expected`, `actual`, `evidence` ; le rapport interne les reproduit telles quelles, avec « à demander au client » quand elles manquent | `shared/db/schema.ts`, `server/qa/report.ts`                                |
-| Communiquer avec les clients en français                         | Trois modèles de réponse (accusé, demande de précision, résolution) + publication d'une note visible depuis le lien de suivi                                     | `server/qa/report.ts`, `client/src/pages/SupportTicket.tsx`                 |
-| Mises à jour quotidiennes et suivi jusqu'à résolution            | Point quotidien idempotent (flux du jour, relances, auto-tests, prochaines actions) + alerte de suivi au-delà de 48 h sans activité                              | `server/qa/digest.ts`, `shared/contracts.ts` (`QA_OVERDUE_AFTER_MINUTES`)   |
+| Mission du poste                                                 | Implémentation                                                                                                                                                                                                                       | Fichiers                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Tester les fonctionnalités de l'application                      | 7 invariants de fonctionnement rejoués toutes les 15 minutes par l'ordonnanceur interne, plus un test fonctionnel de la page publique quotidien                                                                                      | `server/qa/selfTest.ts`, `server/qa/digest.ts`                              |
+| Analyser les problèmes signalés par les clients                  | Ticket unique par signalement, preuves du navigateur attachées d'office, lecture préliminaire générée à partir des seuls signaux présents                                                                                            | `server/qa/tickets.ts`, `server/qa/report.ts`                               |
+| Identifier bugs, comportements inattendus, problèmes d'ergonomie | `kind` = `bug` / `behaviour` / `ux` + sévérité `P1`…`P4`, modifiables à tout moment depuis le poste de traitement                                                                                                                    | `shared/contracts.ts`, `client/src/components/uptime/qa/QaTicketDetail.tsx` |
+| Documenter avec étapes, preuves et attendu vs réel               | Colonnes dédiées `steps`, `expected`, `actual`, `evidence` ; le rapport interne les reproduit telles quelles, avec « à demander au client » quand elles manquent                                                                     | `shared/db/schema.ts`, `server/qa/report.ts`                                |
+| Communiquer avec les clients en français                         | Trois modèles de réponse (accusé, demande de précision, résolution) + publication d'une note visible depuis le lien de suivi                                                                                                         | `server/qa/report.ts`, `client/src/pages/SupportTicket.tsx`                 |
+| Mises à jour quotidiennes et suivi jusqu'à résolution            | Point quotidien idempotent (flux du jour, relances, auto-tests, prochaines actions), **produit et consulté sur `/qa`, jamais envoyé** — le produit n'a aucun transport de messagerie + alerte de suivi au-delà de 48 h sans activité | `server/qa/digest.ts`, `shared/contracts.ts` (`QA_OVERDUE_AFTER_MINUTES`)   |
 
 ---
 
@@ -48,7 +48,7 @@ pour qu'une note compte dans le suivi au même titre qu'un changement d'état.
 
 Deux colonnes ne sont jamais destinées au client :
 
-- `reporter_token` (unique) — le jeton du lien de suivi, absent pour les
+- `reporterToken` (unique) — le jeton du lien de suivi, absent pour les
   tickets internes et automatiques ;
 - `fingerprint` (unique) — la clé de déduplication des anomalies, **remise à
   `null` à la fermeture**. Une anomalie persistante met donc à jour un seul
@@ -258,6 +258,26 @@ des tickets du jour concerné, au lieu de les relire depuis le blob : un point
 mis en cache ne peut pas affirmer qu'une journée fut calme alors qu'elle ne le
 fut pas.
 
+**Deux fenêtres, un seul rythme.** Le contenu est calculé sur `WINDOW_HOURS = 24`
+heures glissantes depuis `now` (`digest.ts:29`), tandis que la passe est réservée
+(`claimRun`) sur une clé de **jour UTC** (`digest.ts:219-222`) : la première
+passe du jour produit le point, les suivantes refusent, et
+`POST /api/qa/digest/run` répond `409` sans `force`. Un point lu le soir ne
+couvre donc pas les mêmes heures qu'un point lu le matin, alors qu'ils portent la
+même date.
+
+**Le point quotidien est produit, jamais transporté.** C'est une distinction à
+faire devant quelqu'un qui attend un e-mail : `buildDailyDigest` écrit le
+markdown dans `qa_runs.detail`, `GET /api/qa/digest` le rejoue, et le panneau
+« Point quotidien » de `/qa` est le **seul** consommateur du dépôt. Le produit
+n'a aucun transport de messagerie — ni SMTP, ni envoi vers les canaux de
+notification, ni cron externe qui récupère le point. Une instance qui ne monte
+pas l'ordonnanceur interne (`SCHEDULER_INTERNAL=0`) et un opérateur qui n'ouvre
+jamais `/qa` ne voient donc jamais de point, et rien ne le signale à l'écran :
+l'échec est journalisé en événement structuré `qa_daily_digest_error`
+(`digest.ts:394-402`) puis avalé — et une base absente fait `return null` avant
+même cela (`digest.ts:381-382`).
+
 ---
 
 ## 8. Suivi à 48 heures
@@ -329,28 +349,44 @@ répète tant qu'elle dure.
 | `client/src/lib/qaContext.test.ts`               | route sans chaîne de requête, aucune fuite du jeton, tampons circulaires de 10, rognage 300/60, copie insensible aux erreurs ultérieures, `clearEvidence`                                                                                                                                                                                                   |
 
 ```bash
-pnpm exec vitest run          # 184 tests
+pnpm exec vitest run          # 22 fichiers, 219 tests
 pnpm exec tsc --noEmit
 pnpm exec oxlint --deny-warnings .
 pnpm format:check
+pnpm build
 ```
+
+`server/checks/client.test.ts` est le seul fichier de test qui sorte sur le
+réseau : il interroge `example.com`, un hôte inexistant en `.invalid` et une
+page réelle de plus de 256 Ko pour prouver la troncature. C'est le point à
+revoir en premier si `pnpm test` devient lent ou rouge sans raison.
 
 ---
 
 ## 12. Vérification en local
 
-1. `pnpm dev`, puis ouvrir `/` et `/status/demo-services` (page de démonstration) —
-   les deux en thème clair.
-2. « Signaler un problème » → décrire un comportement, laisser les preuves se
-   remplir → le `201` renvoie `UP-XXXXX` et le jeton.
-3. Ouvrir `/support/<jeton>` : thème clair, progression d'étape lisible, échanges
-   publics uniquement ; le complément envoyé depuis la page y reparaît.
-4. Réclamer le compte créateur (`UPTIMEPULSE_OWNER_EMAIL`, `rajaomanjatoventso@gmail.com`
-   par défaut) depuis `/register` et ouvrir `/qa` en thème sombre : stats,
-   auto-tests, point du jour, le dossier dans la liste. Les comptes `demo@`
-   hérités de la base locale sont refusés depuis ADR-016.
+1. Démarrer le serveur (sous Windows, `pnpm dev` échoue sur sa syntaxe d'env
+   POSIX : `NODE_ENV=development node_modules/.bin/tsx watch
+server/_core/index.ts`), puis ouvrir `/`. Aucun seed ne préremplit la base —
+   il faut créer un moniteur et une page de statut depuis `/settings` pour avoir
+   un slug, et donc une `/status/:slug` à consulter.
+2. Sur cette page, « Signaler un problème » → décrire un comportement, laisser
+   les preuves se remplir → le `201` renvoie `UP-XXXXX` et le jeton.
+3. Ouvrir `/support/<jeton>` : progression d'étape lisible, échanges publics
+   uniquement ; le complément envoyé depuis la page y reparaît.
+4. Réclamer le compte créateur (`UPTIMEPULSE_OWNER_EMAIL`, dont la valeur par
+   défaut est l'adresse du créateur posée dans `server/auth/owner.ts`) depuis
+   `/register`, puis ouvrir `/qa` — même régime clair que le reste du produit
+   depuis ADR-018 : stats, auto-tests, point du jour, le dossier dans la liste.
+   Un compte antérieur au verrou, `demo@` ou autre, répond `403
+ACCESS_RESERVED` depuis ADR-016.
 5. Traiter : trier, publier une note, générer un brouillon français, le publier
    au client, puis vérifier qu'il apparaît bien sur `/support/<jeton>`.
 6. Forcer une passe (« Régénérer » le point, relancer les auto-tests) pour
    observer l'idempotence : une passe programmée du même bucket ne produit
    rien, un forçage produit un bucket distinct.
+
+Les captures de `docs/images/` et les figures du `cahier-des-charges.md` ont été
+prises sur une base de développement qui portait le slug `demo-services` ; ce
+slug n'existe dans aucun seed du dépôt. Les chiffres qu'elles montrent sont donc
+ceux d'un instant donné, pas un jeu de données reproductible.

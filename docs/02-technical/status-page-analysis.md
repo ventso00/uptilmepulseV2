@@ -36,15 +36,15 @@ chaque nombre à partir des données brutes.
 
 ## 2. Sources de données et fenêtres
 
-| Fenêtre                         | Valeur                                                          | Base                   |
-| ------------------------------- | --------------------------------------------------------------- | ---------------------- |
-| Calendrier et uptime            | `STATUS_WINDOW_DAYS` = `RETENTION.pingLogsDays` (90 j)          | `ping_logs.checked_at` |
-| Latence, phases, courbe horaire | `LATENCY_WINDOW_DAYS` = 7 j, échantillon sur 14 j               | idem                   |
-| Incidents                       | 90 j, `status <> 'suspect'`                                     | `incidents.started_at` |
-| Certificat                      | lu sur la monitor (`ssl_valid_to`, `ssl_issuer`, `ssl_subject`) | dernier check          |
+| Fenêtre                         | Valeur                                                      | Base                  |
+| ------------------------------- | ----------------------------------------------------------- | --------------------- |
+| Calendrier et uptime            | `STATUS_WINDOW_DAYS` = `RETENTION.pingLogsDays` (90 j)      | `ping_logs.checkedAt` |
+| Latence, phases, courbe horaire | `LATENCY_WINDOW_DAYS` = 7 j, échantillon sur 14 j           | idem                  |
+| Incidents                       | 90 j, `status <> 'suspect'`                                 | `incidents.startedAt` |
+| Certificat                      | lu sur la monitor (`sslValidTo`, `sslIssuer`, `sslSubject`) | dernier check         |
 
 Une fenêtre est un intervalle **ouvert à gauche, fermé à droite** sur `now` :
-`checked_at >= now - N jours`. `windowStart`, `sampleStart` et les quatre
+`checkedAt >= now - N jours`. `windowStart`, `sampleStart` et les quatre
 coupures (`d1`, `d7`, `d30`, `d90`) sont calculées une fois par requête HTTP,
 avec l'horloge du serveur applicatif et non celle de MySQL, pour que les mêmes
 bornes servent aux agrégats SQL et aux filtres JavaScript.
@@ -65,16 +65,17 @@ trois services coûterait ~18 allers-retours sinon, sur un endpoint public.
 
 | #   | Requête                                                            | Sortie                           | Coût                  |
 | --- | ------------------------------------------------------------------ | -------------------------------- | --------------------- |
-| 1   | Buckets par jour UTC (`date_format(checked_at,'%Y-%m-%d')`)        | up/total par monitor et par jour | scan 90 j, `GROUP BY` |
-| 2   | Sommes conditionnelles `sum(case when checked_at >= X …)`          | up/total à 1, 7, 30, 90 j        | **un seul** scan 90 j |
+| 1   | Buckets par jour UTC (`date_format(checkedAt,'%Y-%m-%d')`)         | up/total par monitor et par jour | scan 90 j, `GROUP BY` |
+| 2   | Sommes conditionnelles `sum(case when checkedAt >= X …)`           | up/total à 1, 7, 30, 90 j        | **un seul** scan 90 j |
 | 3   | Échantillon brut 14 j, trié décroissant, `LIMIT cap × nb_monitors` | lignes de latence/phases         | borné, voir §4        |
-| 4   | Comptes par `classification` sur 90 j, `is_up = false`             | causes d'échec                   | scan 90 j filtré      |
+| 4   | Comptes par `classification` sur 90 j, `isUp = false`              | causes d'échec                   | scan 90 j filtré      |
 | 5   | Agrégats incidents par monitor (`count`, somme, max)               | stats incidents                  | table petite          |
 | 6   | Chronologie incidents jointe à `monitors.name`, `LIMIT 40`         | timeline + dernier incident      | borné                 |
 
-Les points communs aux six requêtes : filtre `monitor_id IN (…)` issu des
-monitors de la page, index `(monitor_id, checked_at DESC)`, et une unique
-horloge de référence.
+Les points communs aux six requêtes : filtre `monitorId IN (…)` issu des
+monitors de la page, index `ping_logs_monitor_checked_idx (monitorId, checkedAt)`
+— déclaré ascendant, MySQL relit le B-tree à rebours pour le tri décroissant de
+la requête 3 — et une unique horloge de référence.
 
 Deux pièges évités volontairement :
 
@@ -170,14 +171,14 @@ rares ne disparaissent pas silencieusement du total.
 ### Incidents et MTTR
 
 - `confirmedCount` = incidents non suspects démarrés dans la fenêtre.
-- `resolvedCount` = ceux ayant un `resolved_at`.
-- `totalDowntimeSeconds` = somme des `duration_seconds` (donc des incidents
-  **résolus** seulement ; un incident ouvert a `duration_seconds` null).
+- `resolvedCount` = ceux ayant un `resolvedAt`.
+- `totalDowntimeSeconds` = somme des `durationSeconds` (donc des incidents
+  **résolus** seulement ; un incident ouvert a `durationSeconds` null).
 - `averageDownSeconds` = `round(total / resolvedCount)` : le MTTR. `null` si
   aucun incident résolu — une page vierge n'a pas de MTTR de 0 s.
 - `longestDownSeconds` = max SQL.
 - `lastIncidentAt` = premier élément de la chronologie pour ce monitor (tri
-  `started_at DESC`), donc le plus récent, incident ouvert inclus.
+  `startedAt DESC`), donc le plus récent, incident ouvert inclus.
 
 ### Budget d'erreur — `errorBudget()`
 
@@ -199,7 +200,7 @@ n'affiche jamais « budget négatif ».
 
 ### Certificat — `certificateFrom()`
 
-Renvoie `null` si **l'un** des trois champs (`ssl_valid_to`, `ssl_issuer`,
+Renvoie `null` si **l'un** des trois champs (`sslValidTo`, `sslIssuer`,
 `ssl_subject`) manque, plutôt qu'un certificat à moitié connu.
 `daysRemaining = floor((valid_to − now) / 1 jour)` ; il devient négatif après
 expiration, et l'UI colore en rouge `< 0`, orange `≤ 30`, avec une alerte
@@ -261,19 +262,33 @@ appliquées dans `StatusAnalytics.tsx` :
 
 ## 9. Vérifier localement
 
-```bash
-# 1. Construction et serveur
-pnpm build && pnpm dev   # http://localhost:3000
+`pnpm dev` écrit son environnement en syntaxe POSIX (`NODE_ENV=development tsx
+watch …`, `package.json:7`) : il échoue sous Windows et cmd. Là-bas, lancer le
+serveur directement — le client est monté par Vite en mode middleware, les
+modifications du client sont donc servies sans rebuild :
 
-# 2. Charge utile réelle (fenêtres, percentiles, phases, budget)
-curl -s http://localhost:3000/api/public/status/demo-services | \
-  python -c "import json,sys;d=json.load(sys.stdin);print(json.dumps(d['summary'],indent=2));print(d['methodology']);m=d['monitors'][0];print(m['windows'],m['latency'],m['phases'],m['sla'])"
-# sans Python :
-curl -s http://localhost:3000/api/public/status/demo-services | node -e \
+```bash
+NODE_ENV=development node_modules/.bin/tsx watch server/_core/index.ts
+# http://localhost:3000
+```
+
+**Il n'existe aucun jeu de données de démonstration.** L'unique seed du dépôt
+concerne les trois paliers de `plans` (`shared/db/0007_clever_kulan_gath.sql`).
+Une URL `/api/public/status/demo-services` copiée telle quelle répond `404
+NOT_FOUND` sur une base neuve, parce que la route exige une ligne dans
+`status_pages`. Le slug s'obtient en deux gestes réels, dans
+`/settings` une fois connecté : ajouter un moniteur, puis enregistrer la page
+de statut et lire le slug affiché.
+
+```bash
+SLUG=…slug-créé-depuis-settings…
+
+# Charge utile réelle (fenêtres, percentiles, phases, budget)
+curl -s "http://localhost:3000/api/public/status/$SLUG" | node -e \
   "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const p=JSON.parse(s);console.log(p.summary,p.methodology);const m=p.monitors[0];console.log(m.windows,m.latency,m.phases,m.sla)})"
 
-# 3. Pages
-#    http://localhost:3000/status/demo-services
+# Page
+# http://localhost:3000/status/$SLUG
 ```
 
 Tests attaquants :

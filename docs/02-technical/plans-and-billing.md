@@ -6,7 +6,7 @@ Le produit distingue deux choses que le starter confondait : **la borne techniqu
 
 `intervalSecondsSchema` garde un plancher global de **300 secondes**, et `planUpsertSchema.minIntervalSeconds` est borné `.min(300).max(86_400)`. Un plan ne peut donc jamais promettre un intervalle plus court que ce que le schéma accepte.
 
-Ce plancher n'est pas un caprice commercial : l'échantillon des percentiles du centre d'analyse (voir `status-page-analysis.md`) est dimensionné à partir de 300 s. Un plan à 60 s ferait exploser silencieusement la bound de 4 032 lignes. Les plans ne peuvent que **remonter** le minimum.
+Ce plancher n'est pas un caprice commercial : l'échantillon des percentiles du centre d'analyse (voir `status-page-analysis.md`) est dimensionné à partir de 300 s. Un plan à 60 s ferait exploser silencieusement le plafond de 4 320 lignes par moniteur (`LATENCY_SAMPLE_CAP_PER_MONITOR`, `server/statuspages/analysis.ts:36-39`). Les plans ne peuvent que **remonter** le minimum.
 
 Les colonnes éditables (`shared/db/schema.ts`, table `plans`) — les neuf premières forment le plan effectif, les deux dernières ne sortent que pour la console :
 

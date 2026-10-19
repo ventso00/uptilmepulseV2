@@ -13,10 +13,12 @@ réponse ne dit jamais si le compte existe.
 ## Rate limiting
 
 Le compteur vit en mémoire par processus (`server/auth/rateLimit.ts`, map bornée
-à 10 000 entrées) : il protège login, register et les opérations sensibles d'une
-instance, et repart de zéro au redémarrage. Avant un déploiement multi-instance,
-il devra être remplacé par un bucket partagé en base ou une capacité de
-plateforme.
+à 10 000 entrées avec balayage et éviction FIFO) : c'est une **fenêtre fixe** —
+un compteur remis à zéro en fin de fenêtre — et non un token bucket, donc une
+rafale en début de fenêtre est sanctionnée au même titre qu'une moyenne. Il
+protège login, register et les opérations sensibles d'une instance, et repart de
+zéro au redémarrage. Avant un déploiement multi-instance, il devra être remplacé
+par un compteur partagé en base ou une capacité de plateforme.
 
 ## SSRF des checks
 
@@ -46,7 +48,7 @@ plafonnées à trois sauts, chacune revalidée.
 ## Chaîne publique
 
 Les surfaces sans session (`/api/public/status/:slug`, intake et suivi QA,
-`/api/plans`) sont limitées par token bucket, validées par schéma Zod, et ne
-sélectionnent que les colonnes destinées au public : la sérialisation d'un ticket
-est écrite champ par champ (`server/qa/tickets.ts`) pour qu'ajouter une colonne
-au schéma ne puisse pas la publier par accident.
+`/api/plans`) sont limitées par compteur à fenêtre fixe, validées par schéma
+Zod, et ne sélectionnent que les colonnes destinées au public : la sérialisation
+d'un ticket est écrite champ par champ (`server/qa/tickets.ts`) pour qu'ajouter
+une colonne au schéma ne puisse pas la publier par accident.

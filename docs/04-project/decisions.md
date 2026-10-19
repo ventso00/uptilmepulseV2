@@ -14,7 +14,8 @@
 
 ## ADR-004 — Heartbeat à la minute
 
-**Statut : accepté.** Une seule cadence système sélectionne les monitors dus par `next_check_at`; les plans n’ajoutent pas de crons.
+**Statut : accepté.** Une seule cadence système sélectionne les monitors dus par
+`nextCheckAt` ; les plans n’ajoutent pas de crons.
 
 ## ADR-005 — Paliers freemium en base, pas en dur
 
@@ -50,7 +51,7 @@
 
 ## ADR-013 — Quotas et paliers lus en base, bornés par le schéma
 
-**Statut : accepté.** Les paliers live dans `plans` et s'éditent depuis `/console` (`users.role = 'admin'`), parce qu'un freemium s'ajuste en permanence : un quota codé impose une redeploy à chaque décision commerciale, et le créateur est justement le décideur. Deux garde-fous empêchent l'éditeur de se mordre la queue. D'abord, `minIntervalSeconds` ne peut pas descendre sous 300 s, la borne déjà codée de `intervalSecondsSchema` — l'échantillon des percentiles du statut public est dimensionné à partir de cette valeur, un plan à 60 s ferait silencieusement sauter la bound de 4 032 lignes ; les plans ne peuvent que remonter le minimum. Ensuite, `slug` est immuable pour un palier existant : renommer `free` supprimerait le repli, renommer un autre palier en `free` ferait deux candidats au repli. L'ordre du landing n'est pas `sortOrder` mais le prix, avec `free` épinglé en tête, pour qu'un champ que la console laisse en l'état ne puisse pas désordonner la vitrine. Un compte dont le palier a disparu est réancré sur `planId IS NULL` et reçoit le palier intégré : l'opération d'effacement d'un administrateur ne verrouille jamais un client. Baisser un quota ne supprime pas les monitors existants, il rend le surnombre visible. Aucun paiement en ligne : `priceCents` est un affichage, l'affectation d'un palier payant reste un geste d'administrateur.
+**Statut : accepté.** Les paliers live dans `plans` et s'éditent depuis `/console` (`users.role = 'admin'`), parce qu'un freemium s'ajuste en permanence : un quota codé impose une redeploy à chaque décision commerciale, et le créateur est justement le décideur. Deux garde-fous empêchent l'éditeur de se mordre la queue. D'abord, `minIntervalSeconds` ne peut pas descendre sous 300 s, la borne déjà codée de `intervalSecondsSchema` — l'échantillon des percentiles du statut public est dimensionné à partir de cette valeur, un plan à 60 s ferait silencieusement sauter la bound de 4 320 lignes par moniteur (`LATENCY_SAMPLE_CAP_PER_MONITOR`, `server/statuspages/analysis.ts:36-39`) ; les plans ne peuvent que remonter le minimum. Ensuite, `slug` est immuable pour un palier existant : renommer `free` supprimerait le repli, renommer un autre palier en `free` ferait deux candidats au repli. L'ordre du landing n'est pas `sortOrder` mais le prix, avec `free` épinglé en tête, pour qu'un champ que la console laisse en l'état ne puisse pas désordonner la vitrine. Un compte dont le palier a disparu est réancré sur `planId IS NULL` et reçoit le palier intégré : l'opération d'effacement d'un administrateur ne verrouille jamais un client. Baisser un quota ne supprime pas les monitors existants, il rend le surnombre visible. Aucun paiement en ligne : `priceCents` est un affichage, l'affectation d'un palier payant reste un geste d'administrateur.
 
 ## ADR-014 — Assertion de contenu sans faux positif de troncature
 
@@ -66,13 +67,65 @@
 
 ## ADR-017 — Deux régimes visuels dérivés de la route
 
-**Statut : accepté.** `/`, `/status/:slug` et `/support/:token` rendent en clair, `/dashboard`, `/monitors/:id`, `/settings`, `/qa`, `/console`, `/login` et `/register` restent sombres, et c'est `client/src/App.tsx` qui le déduit du chemin — pas un réglage utilisateur, pas un `localStorage`. Un lecteur qui vérifie l'état de son commerce et un opérateur qui pilote une file de checks n'ont pas la même tolérance à la densité : imposer le thème de l'un à l'autre dégrade les deux. Le mécanisme est unique : `:root` porte les jetons clairs, `.dark` les mêmes noms en valeurs sombres, et `@theme inline` les publie comme utilitaires Tailwind (`bg-page`, `bg-surface-2`, `text-ink-soft`, `border-line`, `bg-brand`, `text-state-up|down|warn`). La contrepartie est une règle d'écriture : un composant monté sur les deux régimes — `Modal`, `StatusBadge`, `ReportIssueDialog`, `QaChips`, `Skeleton`, `ErrorBoundary` — n'a pas droit à une couleur littérale, sinon il devient lisible dans un régime et illisible dans l'autre. Les polices sont déclarées et réellement chargées (`DM Sans`, `Space Grotesk` pour les titres, `JetBrains Mono` pour les métriques tabulaires) : la version précédente annonçait Inter sans le charger. Aucune dépendance d'animation n'a été ajoutée — les micro-animations sont des keyframes CSS locaux, tous couverts par `prefers-reduced-motion`.
+**Statut : reversé par ADR-018.** Le texte suivant est conservé tel quel parce
+qu'il explique pourquoi le bloc `.dark` et la plomberie `ThemeContext` sont
+encore dans le dépôt : ils ont été écrits pour cette décision, qui n'est plus
+celle du produit.
+
+Historique : `/`, `/status/:slug` et `/support/:token` rendent en clair,
+`/dashboard`, `/monitors/:id`, `/settings`, `/qa`, `/console`, `/login` et
+`/register` restent sombres, et c'est `client/src/App.tsx` qui le déduit du
+chemin — pas un réglage utilisateur, pas un `localStorage`. Un lecteur qui
+vérifie l'état de son commerce et un opérateur qui pilote une file de checks
+n'ont pas la même tolérance à la densité : imposer le thème de l'un à l'autre
+dégrade les deux. Le mécanisme est unique : `:root` porte les jetons clairs,
+`.dark` les mêmes noms en valeurs sombres, et `@theme inline` les publie comme
+utilitaires Tailwind (`bg-page`, `bg-surface-2`, `text-ink-soft`, `border-line`,
+`bg-brand`, `text-state-up|down|warn`). La contrepartie est une règle d'écriture :
+un composant monté sur les deux régimes n'a pas droit à une couleur littérale,
+sinon il devient lisible dans un régime et illisible dans l'autre. Les polices
+sont déclarées et réellement chargées (`DM Sans`, `Space Grotesk` pour les
+titres, `JetBrains Mono` pour les métriques tabulaires) : la version précédente
+annonçait Inter sans le charger. Aucune dépendance d'animation n'a été ajoutée —
+les micro-animations sont des keyframes CSS locales, toutes couvertes par
+`prefers-reduced-motion`.
+
+## ADR-018 — Un régime clair unique pour tout le produit
+
+**Statut : accepté.** Le sombre n'est plus jamais monté :
+`client/src/App.tsx:28` rend un `<ThemeProvider defaultTheme="light">` unique
+autour du `<Switch>`, sans `forcedTheme` ni `switchable`, et le commentaire
+`App.tsx:18-24` dit explicitement que la route ne retourne plus le thème « dans
+le dos de l'utilisateur ». Deux raisons, mesurées plutôt que conceptuelles.
+D'abord le coût d'audit : chaque composant monté des deux côtés devait tenir son
+contraste AA dans deux palettes, ce qui rendait chaque ajustement de jeton
+bifide et invisible. Ensuite la promesse produit : une cliente qui ouvre
+`/status/mon-site` et l'opérateur qui traite sa file de tickets lisent le même
+artefact — l'écart de régime suggérait deux produits.
+
+La bascule est conservée mais **dormante**, et le documenter est le prix à payer
+pour qu'elle reste réactivable sans mentir dans le README : le bloc `.dark`
+(`client/src/index.css:141-194`) garde les mêmes noms de jetons en valeurs
+sombres, `ThemeContext.tsx` garde `forcedTheme`, `switchable`, `toggleTheme` et
+`useTheme()`, et aucun de ces quatre éléments n'a d'appelant. Deux pièges
+attendent celui qui la réactive : `client/src/components/ui/sonner.tsx:5` lit le
+`useTheme()` de **next-themes** et non celui du provider monté, et
+`.auth-input` a migré au-delà des écrans d'authentification (`Dashboard`,
+`Settings`, `QaQueue`, `AdminConsole`, `QaTicketDetail`) alors que son socle
+clair, `index.css:280`, reste valable.
+
+La règle d'écriture, elle, survit à l'ADR-017 : la couleur passe par les jetons
+sémantiques, jamais par une valeur littérale. C'est ce qui a rendu
+l'audit de contraste réparable d'un seul geste — assombrir `--ink-muted` de
+`#7a7873` à `#6b6a66` a corrigé quinze couples texte/fond simultanément, parce
+qu'un seul endroit dans le dépôt décide de cette teinte.
 
 ## Changelog
 
+- 2026-10-19 : régime visuel unique (ADR-018, reversale de ADR-017), audit de contraste AA mesuré sur pixels réels et `--ink-muted` assombri en `#6b6a66`, pied de page refondu avec sonde `GET /api/health`, et reprise documentaire — les corrections de cette date sont listées dans `docs/04-project/documentation-ledger.md`.
 - 2026-10-10 : accès à opérateur unique et surfaces clientes en clair — verrou d'authentification sur l'adresse du créateur (`REGISTRATION_CLOSED`, `ACCESS_RESERVED`), landing, analyse publique et suivi de signalement rendus en thème clair par régime dérivé de la route, verdict en une phrase et liste de problèmes déduits du seul payload mesuré sur `/status/:slug`, progression d'étape lisible sur `/support/:token`, jetons sémantiques et polices chargées.
 - 2026-10-09 : modèle freemium et vérification de contenu — paliers en base éditables depuis `/console` (overview, création/édition, affectation de comptes), quotas et limites appliqués côté serveur par le plan effectif, assertion de contenu avec classifications dédiées, bande tarifs du landing branchée sur `/api/plans`.
 - 2026-10-09 : module qualité et support client — file de tickets avec preuves capturées par le navigateur, rapport interne et réponses françaises générés, sept invariants rejoués toutes les 15 minutes, point quotidien idempotent, lien de suivi client en lecture seule, poste de traitement `/qa`.
 
-- 2026-10-05 : corrections du hook `lookup` DNS et du fuseau du pool MySQL, qui rendaient le produit non fonctionnel ; gestionnaire d’erreurs Express, pool de checks borné, agrégats SQL, pagination, contrats zod client, accessibilité du dialogue et du menu ; suppression du code mort ; ESLint ; Dockerfile multi-stage non-root ; CI enrichie ; documentation du développement local.
+- 2026-10-05 : corrections du hook `lookup` DNS et du fuseau du pool MySQL, qui rendaient le produit non fonctionnel ; gestionnaire d’erreurs Express, pool de checks borné, agrégats SQL, pagination, contrats zod client, accessibilité du dialogue et du menu ; suppression du code mort ; analyseur statique (oxlint — la ligne mentionnait ESLint, qu'aucun fichier du dépôt ne configure) ; Dockerfile multi-stage non-root ; CI enrichie ; documentation du développement local.
 - 2026-09-30 : initialisation du projet géré, direction Signal clair, documentation fondation et contrat de routes créés.
