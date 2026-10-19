@@ -510,12 +510,11 @@ Purge — `server/scheduler/retention.ts` :
   (`retention.ts:9-10,41`).
 - Fréquence : une passe incrémentale « appelée depuis le tick de
   l'ordonnanceur », idempotente donc tolérante aux ticks qui se chevauchent
-  (`retention.ts:47-53`). La cadence exacte du tick n'est pas fixée dans les
-  fichiers sources de ce document ; à recouper dans `server/scheduler/`.
-  Indices discordants : `schema.ts:294-299` qualifie le balayage de retry de
-  « une fois par minute » ; `docs/02-technical/qa-support.md:185-187` place
-  la purge sur un tick de 30 s. Cadence réelle : non déterminé depuis le code
-  cité ici.
+  (`retention.ts:47-53`). Cadence mesurée : la purge est appelée à chaque passe
+  complet (`server/scheduler/tick.ts:77-79`) et la boucle interne lance une
+  passe toutes les 30 s (`server/scheduler/loop.ts:19,38`). Le commentaire
+  `shared/db/schema.ts:294-295` (« once per minute ») décrit le scan d'avant
+  l'index, pas la cadence du tick.
 - Tables jamais purgées par ce module : `qa_ticket_events`, `qa_runs`,
   `incidents` (aucune DELETE les concernant dans `retention.ts:51-73`).
 

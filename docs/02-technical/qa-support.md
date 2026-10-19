@@ -73,10 +73,15 @@ Registre d'idempotence des deux jobs récurrents, contrainte unique sur
 | Point quotidien | `daily_digest` | `2026-10-09` (jour UTC)                       | une fois par jour |
 
 Le gain se fait par `INSERT` : le premier gagnant travaille, les autres
-reçoivent `ER_DUP_ENTRY` et passent leur tour. Plusieurs instances du serveur
-ou un cron externe ne produisent donc jamais deux points du même jour.
-`finishedAt` reste `null` si la passe meurt en cours : l'incident est visible
-au lieu d'être silencieusement perdu.
+reviennent de `claimRun` avec `null` (`server/qa/runs.ts:17-34`). Le conflit
+d'index unique est reconnu par `isDuplicateKeyError` (`server/qa/runs.ts:25`),
+qui lit le code du pilote sur `.cause` : Drizzle enveloppe toute requête en
+échec dans un `DrizzleQueryError` dont le `message` est le SQL avec ses
+valeurs liées et dont le `code` est vide (`server/_core/db-error.ts:17-41`).
+Plusieurs instances du serveur ou un cron externe ne produisent donc jamais
+deux points du même jour, et l'instance qui perd la revendication ne
+journalise rien. `finishedAt` reste `null` si la passe meurt en cours :
+l'incident est visible au lieu d'être silencieusement perdu.
 
 Les passes forcées (boutons du poste de traitement) ajoutent un suffixe
 `-m<6 derniers chiffres de l'horloge>` : elles écrivent un nouveau bucket plutôt
@@ -168,7 +173,11 @@ Deux règles d'honnêteté, toutes deux testées :
 1. **Un test qui ne peut pas s'exécuter est un échec**, jamais un succès.
    `database_reachable` capture l'exception et l'écrit dans `actual` ; une
    exception levée par n'importe quel contrôle pendant `runSelfTest` devient
-   « Test impossible : … ».
+   « Test impossible : … ». Dans les deux cas le texte inséré est celui du
+   pilote, jamais la requête : `safeErrorMessage` écarte le SQL et ses valeurs
+   liées que Drizzle met dans le `message` de son enveloppe
+   (`server/qa/selfTest.ts:149,493`, `server/_core/db-error.ts:47-55`). Le
+   journal `qa_self_test_error` suit la même règle (`server/qa/selfTest.ts:584-585`).
 2. **Une observation se chiffre, elle ne se résume pas.** `actual` porte le
    nombre réel et des exemples (« API publique : en retard de 10 min »), jamais
    « tout va bien ». Le texte est produit par `describe()`, qui oblige l'auteur
@@ -259,7 +268,7 @@ mis en cache ne peut pas affirmer qu'une journée fut calme alors qu'elle ne le
 fut pas.
 
 **Deux fenêtres, un seul rythme.** Le contenu est calculé sur `WINDOW_HOURS = 24`
-heures glissantes depuis `now` (`digest.ts:29`), tandis que la passe est réservée
+heures glissantes depuis `now` (`digest.ts:30`), tandis que la passe est réservée
 (`claimRun`) sur une clé de **jour UTC** (`digest.ts:219-222`) : la première
 passe du jour produit le point, les suivantes refusent, et
 `POST /api/qa/digest/run` répond `409` sans `force`. Un point lu le soir ne
@@ -275,8 +284,9 @@ notification, ni cron externe qui récupère le point. Une instance qui ne monte
 pas l'ordonnanceur interne (`SCHEDULER_INTERNAL=0`) et un opérateur qui n'ouvre
 jamais `/qa` ne voient donc jamais de point, et rien ne le signale à l'écran :
 l'échec est journalisé en événement structuré `qa_daily_digest_error`
-(`digest.ts:394-402`) puis avalé — et une base absente fait `return null` avant
-même cela (`digest.ts:381-382`).
+(`digest.ts:396-402`, message porté par `safeErrorMessage` à la ligne `:399`)
+puis avalé — et une base absente fait `return null` avant
+même cela (`digest.ts:382-383`).
 
 ---
 
@@ -344,17 +354,26 @@ répète tant qu'elle dure.
 | `server/qa/tickets.test.ts`                      | table de transitions (y compris `closed` sans issue et `resolved → in_progress`), jeton au format attendu, `parseEvidence` tolérant, calcul de `idleMinutes` jamais négatif, inventaire exhaustif des champs publics                                                                                                                                        |
 | `server/qa/digest.test.ts`                       | `digestPeriodKey` sur le jour UTC, ordre lexical = ordre chronologique                                                                                                                                                                                                                                                                                      |
 | `server/qa/runs.test.ts`                         | `parseDetail` : `null`, JSON illisible ou non-tableau → liste vide                                                                                                                                                                                                                                                                                          |
+| `server/_core/db-error.test.ts`                  | déballage de l'enveloppe Drizzle : code du pilote lu à travers `.cause`, conflit d'index unique reconnu sur les deux formes (enveloppée et nue), message qui ne contient jamais le texte de la requête (3 tests)                                                                                                                                            |
 | `server/qa/routes.test.ts`                       | `requestOrigin` : `APP_BASE_URL` prioritaire, `x-forwarded-host`, proto fiable, liste virgule, refus d'un hôte forgé ou vide, IPv6 entre crochets                                                                                                                                                                                                           |
 | `shared/contracts.test.ts` (bloc _qa contracts_) | référence `UP-XXXXX` padding, transitions, `QA_OPEN_STATUSES` et 48 h, défauts et bornes de `qaEvidenceSchema`, valeurs par défaut de l'intake et honeypot, visibilité par défaut d'une note, kinds de réponse, champs requis des tickets, suppression des champs privés                                                                                    |
 | `client/src/lib/qaContext.test.ts`               | route sans chaîne de requête, aucune fuite du jeton, tampons circulaires de 10, rognage 300/60, copie insensible aux erreurs ultérieures, `clearEvidence`                                                                                                                                                                                                   |
 
 ```bash
-pnpm exec vitest run          # 22 fichiers, 219 tests
+pnpm exec vitest run          # 23 fichiers, 223 tests
 pnpm exec tsc --noEmit
 pnpm exec oxlint --deny-warnings .
 pnpm format:check
 pnpm build
 ```
+
+Une leçon de comptage, à énoncer telle quelle : le test de la passerelle
+base→503 (`server/platform.test.ts:103-130`) jetait une erreur **nue** portant
+`.code` — exactement la forme que Drizzle ne produit plus. Il restait vert alors
+que la revendication `qa_runs`, le `409 SLUG_TAKEN` et la déduplication des
+notifications étaient cassés en production. Le cas ajouté
+(`server/platform.test.ts:132-167`) jette l'enveloppe réelle et vérifie que la
+ligne de journal ne contient pas le texte de la requête.
 
 `server/checks/client.test.ts` est le seul fichier de test qui sorte sur le
 réseau : il interroge `example.com`, un hôte inexistant en `.invalid` et une
@@ -367,7 +386,15 @@ revoir en premier si `pnpm test` devient lent ou rouge sans raison.
 
 1. Démarrer le serveur (sous Windows, `pnpm dev` échoue sur sa syntaxe d'env
    POSIX : `NODE_ENV=development node_modules/.bin/tsx watch
-server/_core/index.ts`), puis ouvrir `/`. Aucun seed ne préremplit la base —
+server/_core/index.ts`), puis ouvrir `/`. En développement, `setupVite` ne
+   fabrique plus la configuration lui-même : il passe le chemin de
+   `vite.config.ts` et laisse Vite le charger (`server/_core/vite.ts:12-20`),
+   donc `server.host: true` (`vite.config.ts:209`) et
+   `server.fs = { strict: true, deny: ["**/.*"] }` (`vite.config.ts:219-222`)
+   s'appliquent réellement — mesuré : `GET /@fs/<chemin absolu>/.env` répond
+   `403 Restricted`, et `GET /.env` répond `200` mais rend le shell HTML du
+   repli SPA (`server/_core/vite.ts:23`), jamais le fichier. Aucun seed ne
+   préremplit la base —
    il faut créer un moniteur et une page de statut depuis `/settings` pour avoir
    un slug, et donc une `/status/:slug` à consulter.
 2. Sur cette page, « Signaler un problème » → décrire un comportement, laisser

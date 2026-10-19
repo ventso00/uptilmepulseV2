@@ -6,6 +6,8 @@ UptimePulse traite des URLs et des secrets de notification. Toute donnée appart
 
 Chaque route est enregistrée via `asyncHandler` et aboutit au gestionnaire d’erreur terminal de `server/_core/http.ts`. Sans cela, Express 4 laisse une promesse rejetée pendre la requête jusqu’au timeout du proxy au lieu de produire une réponse : toute exception de base de données doit remonter par ce chemin, jamais par un `catch` silencieux. Les détails du pilote ne sont jamais renvoyés au client.
 
+Drizzle 0.44 enveloppe chaque échec d’instruction dans un `DrizzleQueryError` dont le message est le texte SQL avec ses valeurs liées — hachages de mots de passe, jetons de session et tokens Telegram chiffrés transitent par les mêmes insertions. Le code du pilote se lit donc à travers `.cause` (`server/_core/db-error.ts:17`) et toute journalisation passe par `safeErrorMessage` (`:47`), qui ne conserve que le message du pilote. Un journal qui afficherait `Failed query:` est une régression, pas un détail.
+
 ## SSRF
 
 Les cibles acceptées sont HTTP/HTTPS uniquement. Les noms et adresses localhost, loopback, réseaux privés/réservés, link-local, metadata cloud, ULA IPv6, IPv4 mappé, plages de tunneling IPv6 (6to4 `2002::/16`, Teredo `2001::/32`) et autres plages documentées dans le cahier sont bloqués. Les redirects sont manuels et chaque destination est revalidée. Un timeout, une taille maximale de réponse et une limite de redirects sont obligatoires.

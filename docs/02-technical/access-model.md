@@ -19,10 +19,10 @@ Une seule adresse peut obtenir une session : celui du créateur.
   pas servir à frapper le CPU en bcrypt coût 12 ni à créer un second compte.
   Le compte créé porte `role = 'admin'`, ce qui rend l'administrateur
   structurellement unique.
-- `requireUser` (`server/_core/http.ts`) vérifie l'email de la session
+- `requireUser` (`server/_core/http.ts:62-78`) vérifie l'email de la session
   résolue : un token de session valide mais d'un autre compte répond
-  `403 ACCESS_RESERVED`. Le verrou est serveur — masquer des liens côté client
-  n'aurait été qu'une esthétique.
+  `403 ACCESS_RESERVED` (`server/_core/http.ts:73-76`). Le verrou est serveur —
+  masquer des liens côté client n'aurait été qu'une esthétique.
 - `POST /api/auth/login` renvoie un `401` indistinguable d'un mauvais mot de
   passe : la route ne révèle pas si une adresse existe ou si elle est
   réservée.

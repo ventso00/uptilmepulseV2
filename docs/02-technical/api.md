@@ -78,7 +78,7 @@ qu'il est ancoré ligne par ligne sur les fichiers de route.
 - `GET /api/admin/overview`, `GET/POST /api/admin/plans`, `PUT /api/admin/plans/:id`, `PUT /api/admin/users/:id/plan` (réservé `users.role = 'admin'`, écritures limitées à 60/min par IP)
 - `GET /api/health`, `POST /api/scheduled/checks`
 
-Les erreurs utilisent des codes stables et des payloads Zod validés. `UNAUTHORIZED` et `FORBIDDEN` ne révèlent pas si une ressource existe chez un autre utilisateur. Les refus du couche plans sont normalisés par `server/plans/respond.ts` : `QUOTA_EXCEEDED` (409), `FEATURE_UNAVAILABLE` (403) et `VALIDATION_ERROR` (400) avec la borne du plan et la valeur demandée. Les réponses du dashboard et de l’historique sont `private, no-store`.
+Les erreurs utilisent des codes stables et des payloads Zod validés. `UNAUTHORIZED` et `FORBIDDEN` ne révèlent pas si une ressource existe chez un autre utilisateur. Un conflit d'index unique se lit sur `.cause` : Drizzle enveloppe toute requête en échec dans un `DrizzleQueryError` dont le `code` est vide (`server/_core/db-error.ts:17-24`), ce dont dépendent le `409 SLUG_TAKEN` de `PUT /api/status-page` (`server/statuspages/routes.ts:126`) et la revendication idempotente de `qa_runs` (`server/qa/runs.ts:25`). Les messages que `errorHandler` journalise et renvoie sont ceux du pilote, jamais le SQL de la requête (`server/_core/db-error.ts:47-55`). Les refus du couche plans sont normalisés par `server/plans/respond.ts` : `QUOTA_EXCEEDED` (409), `FEATURE_UNAVAILABLE` (403) et `VALIDATION_ERROR` (400) avec la borne du plan et la valeur demandée. Les réponses du dashboard et de l’historique sont `private, no-store`.
 
 ## Monitors
 

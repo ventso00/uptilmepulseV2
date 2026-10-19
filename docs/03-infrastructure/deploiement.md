@@ -5,14 +5,16 @@
 À lire avant tout le reste, parce que deux affirmations optimistes de versions
 antérieures de cette documentation ont été corrigées ici :
 
-- **l'image Docker ne démarre pas en l'état**. Le bundle serveur importent
-  statiquement trois paquets de `devDependencies`. Reproduit, pas déduit :
-  voir « Blocage de démarrage vérifié » plus bas. Un conteneur construit depuis
-  le `Dockerfile` tel quel meurt avant son premier listen.
+- **le bundle de production démarre sans les dépendances de développement, mais
+  l'image Docker n'a jamais été construite**. Le blocage d'import qui tuait
+  `dist/index.js` au premier listen est corrigé et reproduit ici même (« Blocage
+  de démarrage : corrigé et mesuré » plus bas). Docker n'est pas installé sur la
+  machine de développement : `docker build` et `docker run` n'ont été exécutés
+  par personne. Ce qui est prouvé, c'est le bundle ; ce qui reste à prouver,
+  c'est l'image.
 - **aucun pipeline n'a jamais été exécuté à distance**. Le dépôt n'a pas de
-  remote et porte un unique commit de baseline ; le workflow CI décrit plus bas
-  est écrit, pas éprouvé. Son étape `docker run` + `curl /api/health` échouerait
-  telle quelle, et c'est précisément ce qui reste à valider en Phase 4.
+  remote et porte sept commits ; le workflow CI décrit plus bas est écrit, pas
+  éprouvé. Son étape `docker build` + `curl /api/health` n'a jamais rien validé.
 
 Le reste de la page documente ce qui est prêt, ce qui bloque, et comment combler
 les deux.
@@ -41,20 +43,23 @@ d'`import` Node résolus à l'exécution. Le bundle porte donc la liste réelle 
 dépendances de runtime, et cette liste se lit :
 
 ```bash
-grep -o 'from "[^"]*"' dist/index.js | sort -u
+grep '^import .*from "[^./]' dist/index.js | sed -E 's/.*from "([^"]+)".*/\1/' | sort -u
 ```
 
 Sur le dépôt actuel elle contient `express`, `@trpc/server`, `drizzle-orm`,
 `mysql2`, `jose`, `bcryptjs`, `cookie`, `nanoid`, `superjson`, `zod`, `axios`,
-`dotenv`, les modules `node:*` — **et** `vite`, `@vitejs/plugin-react`,
-`@tailwindcss/vite`. Les trois derniers viennent de
-`server/_core/index.ts:9` (`import { serveStatic, setupVite } from "./vite"`)
-qui tire `server/_core/vite.ts:6-7` puis `vite.config.ts:1-2`. Ils sont en
-`devDependencies`. C'est le blocage documenté plus bas.
+`ipaddr.js` et les modules `node:*` — et plus rien de la famille Vite. `dotenv`
+entre aussi en runtime, par un import d'effet (`server/_core/index.ts:1`) que ce
+filtre ne montre pas. `import("vite")` n'apparaît qu'une fois, comme import
+dynamique dans `setupVite` (`server/_core/vite.ts:10`), donc jamais exécuté en
+production. Avant la correction, `vite`, `@vitejs/plugin-react` et
+`@tailwindcss/vite` étaient remontés en imports statiques parce que `vite.ts`
+importait `vite.config.ts` en dur ; `dist/index.js` est passé de 240,4 ko à
+235,9 ko.
 
-Le serveur démarrera avec `NODE_ENV` différent de `development` sélectionne
-`serveStatic(app)` (`server/_core/index.ts:73-77`), qui résout le dossier des
-assets ainsi (`server/_core/vite.ts:51-54`) :
+Un serveur lancé avec `NODE_ENV` différent de `development` sélectionne
+`serveStatic(app)` (`server/_core/index.ts:74-77`), qui résout le dossier des
+assets ainsi (`server/_core/static.ts:6-8`) :
 
 - en `development` : `<racine>/dist/public` ;
 - sinon : `dossier-du-bundle/public`, soit `/app/dist/public` dans l'image.
@@ -107,11 +112,9 @@ Node 22 + pnpm et une installation complète. Rien dans le dépôt ne documente 
 choix — il découle des `COPY` et de l'`--prod`, et il faut l'intégrer à la
 procédure plutôt que le découvrir en production.
 
-### Blocage de démarrage vérifié
+### Blocage de démarrage : mesuré, puis corrigé
 
-Fait : le conteneur runtime ne peut pas démarrer.
-
-Preuve reproduite sur ce poste (et non inférée) :
+Le défaut était réel et reproduit, pas inféré :
 
 ```bash
 mv node_modules/vite node_modules/vite.hidden
@@ -123,27 +126,44 @@ node dist/index.js
 
 C'est exactement l'état des `node_modules` du stage runtime, qui installe avec
 `--prod` (`Dockerfile:35`) : `vite` est déclaré en `devDependencies`
-(`package.json:56,75`), donc absent. Le bundle, lui, l'importe au niveau supérieur
-(`dist/index.js:1079` : `import { createServer as createViteServer } from "vite"`),
-et Node évalue tous les `import` statiques avant la première ligne exécutée —
-peu importe que la branche `serveStatic` soit celle qui tourne.
+(`package.json:56,75`), donc absent. Le bundle, lui, l'importait au niveau
+supérieur, et Node évalue tous les `import` statiques avant la première ligne
+exécutée — peu importe que la branche `serveStatic` soit celle qui tourne. Les
+trois paquets venaient de `vite.config.ts`, importé en dur par
+`server/_core/vite.ts`, que esbuild inline dans le bundle avec ses propres
+imports de paquets.
 
-Pourquoi le CI ne l'a pas attrapé : le workflow construit l'image, la lance et
+**Le correctif retenu (le n° 1 sur trois) est appliqué** :
+
+1. retenu — `setupVite` charge Vite par `await import("vite")`
+   (`server/_core/vite.ts:10`) et passe le chemin de la config à Vite lui-même
+   (`:13`, `configFile:`) au lieu de la spreader avec `configFile: false` ;
+   `serveStatic` a quitté ce module pour `server/_core/static.ts`. Résultat
+   mesuré : plus aucun paquet de la famille Vite dans les imports statiques de
+   `dist/index.js`, `import("vite")` unique et jamais exécuté en production ;
+2. refusé — installer sans `--prod` dans le stage runtime : outil de build dans
+   le runtime, image plus lourde, surface d'attaque plus large ;
+3. refusé — promouvoir `vite`, `@vitejs/plugin-react` et `@tailwindcss/vite` en
+   `dependencies` : ces paquets ne servent qu'au dev.
+
+Vérification faite sur ce poste, à deux reprises : `node_modules/vite`,
+`node_modules/@tailwindcss/vite` et `node_modules/@vitejs/plugin-react` renommés,
+`NODE_ENV=production node dist/index.js` démarre (`Server listening on port
+3112`) et répond `200` sur `/`, `/status/demo-services`, un suivi `/support/…`,
+`/api/health`, `/api/plans`, `/dashboard` et `/qa` ; puis les trois paquets sont
+rendus et le mode développement revérifié (`NODE_ENV=development PORT=3113 npx
+tsx server/_core/index.ts` : HTML transformé avec le préambule react-refresh,
+`/src/main.tsx` 200, `/src/index.css` 200, `/api/platform/config.js` 200).
+
+Ce que cette vérification **ne prouve pas** : Docker n'est pas installé sur ce
+poste, donc `docker build` et `docker run` n'ont jamais été exécutés sur cette
+image. Le bundle démarre sans dépendances de développement ; l'image héritait du
+même défaut et n'a pas encore été reconstruite après le correctif.
+
+Pourquoi le CI ne l'a jamais attrapé : le workflow construit l'image, la lance et
 sonde `/api/health` (`ci.yml:39-53`), ce qui aurait dû échouer — mais ce job
-n'a jamais tourné, faute de remote et de commit publié.
-
-Correctifs possibles, par ordre de propreté :
-
-1. rendre l'import de `./vite` dynamique dans la seule branche qui en a besoin
-   (`server/_core/index.ts:73-77`), et scinder `serveStatic` dans un module qui
-   n'importe ni Vite ni la config ;
-2. à défaut, installer sans `--prod` dans le stage runtime — image plus lourde,
-   outil de build dans le runtime ;
-3. ou promouvoir `vite`, `@vitejs/plugin-react` et `@tailwindcss/vite` en
-   `dependencies` — le plus laid, car ces paquets ne servent qu'au dev.
-
-La correction 1 est celle retenue, planifiée en Phase 4 (tâche dédiée). En
-attendant, un déploiement Docker exige l'un des contournements 2 ou 3.
+n'a jamais tourné, faute de remote et de commit publié. Première piste à tirer
+après la publication : laisser ce job prouver l'image.
 
 ## Base de données au premier déploiement
 
@@ -168,9 +188,9 @@ drizzle-kit migrate`, `pnpm db:migrate` = `drizzle-kit migrate` seulement
    `docs/05-exploitation/prise-en-main.md`.
 
 Vérification : `GET /api/health` ne teste **pas** la base
-(`server/_core/index.ts:40-43`) — un `ok` là-bas ne prouve que le bind TCP. Le
+(`server/_core/index.ts:41-44`) — un `ok` là-bas ne prouve que le bind TCP. Le
 témoin de santé réel est la ligne `scheduler_tick` dans les logs
-(`server/scheduler/tick.ts:103`), et son absence avec `DATABASE_URL` renseigné
+(`server/scheduler/tick.ts:104`), et son absence avec `DATABASE_URL` renseigné
 veut dire que `getDb()` a échoué (`server/db.ts:22`).
 
 ## HTTPS
@@ -185,33 +205,33 @@ besoin en développement ; une adresse IP de LAN en HTTP, elle, casse
 silencieusement la session.
 
 Le serveur suppose déjà un proxy en amont : `app.set("trust proxy", 1)`
-(`server/_core/index.ts:26`) — donc `req.ip`, `x-forwarded-host` et
-`x-forwarded-proto` sont lus comme fiables. Sans proxy, cet réglage est inoffensif ;
+(`server/_core/index.ts:27`) — donc `req.ip`, `x-forwarded-host` et
+`x-forwarded-proto` sont lus comme fiables. Sans proxy, ce réglage est inoffensif ;
 **avec** un proxy qui ne fixe pas ces en-têtes, l'origine reconstruite pour les
 liens de suivi QA retombe sur `host`, et la protection de forme
 (`server/qa/routes.ts:43`) devient le seul garde-fou. Renseigner `APP_BASE_URL`
 supprime l'ambiguïté (`docs/03-infrastructure/environnement.md`).
 
 En-têtes fixes posés par l'application, quel que soit le proxy
-(`server/_core/index.ts:27-34`) : `X-Content-Type-Options: nosniff`,
+(`server/_core/index.ts:28-35`) : `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: strict-origin-when-cross-origin`,
 `Permissions-Policy: camera=(), microphone=(), geolocation=()`, et
-`x-powered-by` désactivé (`:25`). À compléter côté proxy par `Strict-Transport-Security`
+`x-powered-by` désactivé (`:26`). À compléter côté proxy par `Strict-Transport-Security`
 — le code applicatif n'en pose pas.
 
-Le corps de requête est plafonné à 64 ko (`server/_core/index.ts:38-39`) : une
+Le corps de requête est plafonné à 64 ko (`server/_core/index.ts:39-40`) : une
 proxy qui autorise 1 Mo côté TLS ne change rien, l'application répondra `413`.
 
 ## Proxy inverse : ce que l'application attend
 
-- Écoute sur `0.0.0.0` et `PORT` (`server/_core/index.ts:83,90`) — pas de socket
+- Écoute sur `0.0.0.0` et `PORT` (`server/_core/index.ts:84,91`) — pas de socket
   Unix, pas de bind restreint à localhost.
 - `GET /api/health` doit rester joignable pour le `HEALTHCHECK` interne et pour
   la sonde externe ; il répond `no-store`.
 - Les chemins sans extension renvoient le shell SPA
-  (`server/_core/vite.ts:71-76`) à l'exception de `/api/*`, ce qui permet les
+  (`server/_core/static.ts:26-30`) à l'exception de `/api/*`, ce qui permet les
   liens profonds comme `/monitors/12` sans règle de réécriture côté proxy. Un
-  asset manquant retourne bien un `404` (commentaire `server/_core/vite.ts:63-66`),
+  asset manquant retourne bien un `404` (commentaire `server/_core/static.ts:18-25`),
   donc le proxy ne doit pas réécrire les erreurs de statiques en `200`.
 - Cache : les assets fingerprintés de `dist/public` supportent un `immutable`
   long ; les réponses authentifiées sont en `private, no-store`
@@ -280,8 +300,10 @@ check && pnpm test && pnpm build` — les six contrôles verts sur la machine
    appliquées depuis un environnement complet (pas depuis le conteneur).
 3. `DATABASE_URL` et `UPTIMEPULSE_ENCRYPTION_KEY` (≥ 16 caractères) sont
    injectés ; `APP_BASE_URL` pointe sur l'origine publique exacte.
-4. Le conteneur démarre. **Tant que le blocage de `vite` n'est pas corrigé,
-   vérifier explicitement cette étape** : `docker logs` doit montrer
+4. Le conteneur démarre. `docker build` puis `docker run` n'ont **jamais été
+   exécutés** sur ce poste (Docker absent) : cette étape reste à valider après
+   publication. Ce qui est prouvé, c'est que `node dist/index.js` démarre avec
+   les seules dépendances de production. `docker logs` doit montrer
    `Server listening on port 3000`, sinon le process meurt avant.
 5. `curl https://domaine/api/health` répond `{ "status": "ok" }`.
 6. Une ligne `scheduler_tick` apparaît dans les logs dans la minute suivant le

@@ -104,11 +104,12 @@ ce qui a été corrigé et sur quelle mesure.
 - `environnement.md` — les **quinze** variables que le code lit, leur site de
   lecture, le comportement en leur absence, la rotation et ses conséquences.
 - `observabilite.md` — les **vingt-trois** événements structurés, leur charge
-  utile, les quatorze lignes libres qui dérogent à la convention, et les erreurs
+  utile, les seize lignes libres qui dérogent à la convention, et les erreurs
   jamais journalisées.
 - `deploiement.md` — la chaîne de build, les trois étages de l'image, le blocage
-  de démarrage mesuré, la base au premier déploiement, l'obligation HTTPS, le CI
-  et ses trois manques, la checklist avant mise en ligne.
+  de démarrage mesuré puis corrigé, l'image restant à construire, la base au
+  premier déploiement, l'obligation HTTPS, le CI et ses trois manques, la
+  checklist avant mise en ligne.
 - `local-dev.md` — la procédure de développement sur ce poste, Windows compris.
 
 ### `04-project/`
@@ -134,7 +135,7 @@ ce qui a été corrigé et sur quelle mesure.
 
 ### `06-verification/`
 
-- `tests-et-couverture.md` — la vérité sur les tests : 22 fichiers, 219 tests
+- `tests-et-couverture.md` — la vérité sur les tests : 23 fichiers, 223 tests
   mesurés, ce qu'ils ne touchent pas (la base, jamais), les handlers HTTP jamais
   exercés, et ce que le CI ne peut donc pas prouver.
 
@@ -179,5 +180,5 @@ garder le dépôt comme source des liens.
 
 Dernière passe de cohérence : 2026-10-19. Les dénombrements cités dans ce
 sommaire — quinze variables d'environnement, vingt-trois événements de log,
-47 points HTTP, 13 tables, 219 tests — ont été recomptés sur l'arbre de cette
+47 points HTTP, 13 tables, 223 tests — ont été recomptés sur l'arbre de cette
 date, chacun avec sa source dans la page concernée.

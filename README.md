@@ -20,15 +20,15 @@ pas encore.
 
 | Domaine                 | Comportement                                                                                                                                                                                                                       | Source                                                              |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Check planifié          | Sélection des moniteurs échus, claim atomique avec bail de 6 minutes, résolution puis re-validation DNS, requête HTTP bornée, ping log et transition d'incident dans la même transaction.                                          | `server/checks/engine.ts:96-107`                                    |
-| Cadence                 | Intervalles de 300 s à 86 400 s par moniteur, minimum porté par le palier. Boucle interne : passe toutes les 30 s, première 2 s après le boot.                                                                                     | `shared/contracts.ts:12,30`, `server/scheduler/loop.ts:17-20,38-41` |
+| Check planifié          | Sélection des moniteurs échus, claim atomique avec bail de 6 minutes, résolution puis re-validation DNS, requête HTTP bornée, ping log et transition d'incident dans la même transaction.                                          | `server/checks/engine.ts:97-108`                                    |
+| Cadence                 | Intervalles de 300 s à 86 400 s par moniteur, minimum porté par le palier. Boucle interne : passe toutes les 30 s, première 2 s après le boot.                                                                                     | `shared/contracts.ts:12,30`, `server/scheduler/loop.ts:18-21,38-41` |
 | Anti faux positifs      | Un échec isolé ouvre un incident suspect, invisible ; trois échecs consécutifs le confirment et alertent ; deux succès le résolvent et alertent.                                                                                   | `docs/02-technical/qa-support.md`, `server/incidents/`              |
 | Assertion de contenu    | Mot-clé attendu ou interdit cherché sur le corps décodé après un 2xx/3xx. Corps plafonné à 256 Ko, redirections à 3. Une absence sur page tronquée reste non concluante (`unknown`), jamais `DOWN`.                                | `docs/03-infrastructure/checks.md`                                  |
 | Analyse technique       | Chronométrage des phases réseau du dernier hop (DNS, TCP, TLS, premier octet) et lecture du certificat du pair en HTTPS.                                                                                                           | `server/checks/client.ts`                                           |
 | Notifications           | Telegram aujourd'hui, secrets chiffrés en AES-256-GCM, idempotence par index unique, file de reprise (20 livraisons par passe, ≥ 60 s entre tentatives, 3 tentatives dans une passe avec compteur cumulatif).                      | `docs/03-infrastructure/notifications.md`                           |
 | Page de statut publique | `/status/:slug` : verdict, uptime, calendriers, latence p50/p90/p95, incidents confirmés, SSL — sans authentification, limitée par IP, `Cache-Control: public, max-age=30`.                                                        | `server/statuspages/routes.ts:161-195`                              |
 | Rétention               | Purge incrémentale à chaque tick : sessions expirées, ping logs et livrables au-delà de 90 jours, par lots de 1 000.                                                                                                               | `server/scheduler/retention.ts`                                     |
-| File qualité            | Intake anonyme avec preuves navigateur (route, viewport, langue, dix dernières erreurs JS et appels API en échec), jeton rapporteur 32 hex dans le chemin, sept invariants rejoués par tranche UTC de 15 minutes, point quotidien. | `server/qa/selfTest.ts:31,385-388`                                  |
+| File qualité            | Intake anonyme avec preuves navigateur (route, viewport, langue, dix dernières erreurs JS et appels API en échec), jeton rapporteur 32 hex dans le chemin, sept invariants rejoués par tranche UTC de 15 minutes, point quotidien. | `server/qa/selfTest.ts:32,386-389`                                  |
 | Paliers                 | Modèle freemium piloté par la table `plans`, jamais par le code : quota de moniteurs, intervalle minimum, timeout maximum, nombre de canaux, accès à l'assertion de contenu.                                                       | `server/plans/service.ts`                                           |
 
 ## Prérequis
@@ -62,7 +62,7 @@ cp .env.example .env
 | `PORT`                       | optionnel                      | Écoute, `3000` par défaut, sur `0.0.0.0`.                                                                                                                       |
 | `NODE_ENV`                   | optionnel                      | `development` monte Vite ; toute autre valeur sert `dist/public`.                                                                                               |
 | `APP_BASE_URL`               | à renseigner derrière un proxy | Origine absolue des liens de suivi. À défaut, elle est déduite des en-têtes, avec contrôle de forme.                                                            |
-| `UPTIMEPULSE_OWNER_EMAIL`    | optionnel                      | Déplace la porte d'inscription, sinon la constante de `server/auth/owner.ts:9` s'applique.                                                                      |
+| `UPTIMEPULSE_OWNER_EMAIL`    | optionnel                      | Déplace la porte d'inscription, sinon la constante de `server/auth/owner.ts:8` s'applique.                                                                      |
 | `SCHEDULER_INTERNAL`         | optionnel                      | La chaîne exacte `0` désactive la boucle interne. `false` ou `off` ne désactive rien.                                                                           |
 | `MANUS_*`, `OWNER_OPEN_ID`   | dormants                       | Sphère plateforme (OAuth, cron de plateforme, notification propriétaire). Le produit tourne sans elles.                                                         |
 
@@ -121,16 +121,24 @@ NODE_ENV=production node dist/index.js
 `pnpm build` (`package.json:8`) produit deux artefacts : le client dans
 `dist/public` et le bundle serveur ESM `dist/index.js`. En l'absence de
 `NODE_ENV=development`, le serveur sert les assets, avec repli du shell SPA
-pour les chemins sans extension (`server/_core/vite.ts:71-76`), ce qui rend les
-liens profonds comme `/status/ma-slug` accessibles à froid.
+pour les chemins sans extension (`server/_core/static.ts:26-30`), ce qui rend
+les liens profonds comme `/status/ma-slug` accessibles à froid.
 
 Une image Docker est fournie (`Dockerfile`, trois étages, utilisateur non root
-uid 1001, `HEALTHCHECK` sur `/api/health`), **mais elle ne démarre pas en
-l'état** : le bundle importe trois paquets de `devDependencies` que le stage
-runtime n'installe pas (`ERR_MODULE_NOT_FOUND: Cannot find package 'vite'`). Le
-diagnostic complet, les contournements et le correctif planifié sont dans
+uid 1001, `HEALTHCHECK` sur `/api/health`). Elle a déjà été livrée avec un
+défaut bloquant — le bundle importait trois paquets de `devDependencies` que le
+stage runtime n'installe pas (`ERR_MODULE_NOT_FOUND: Cannot find package
+'vite'`) — qui est corrigé : Vite n'est plus chargé que par un import dynamique
+dans la branche de développement (`server/_core/vite.ts:10`) et le service des
+assets vit dans son propre module (`server/_core/static.ts`). **Reste à
+vérifier : Docker n'est pas installé sur la machine de développement, l'image
+n'a donc jamais été construite ni exécutée.** La correction est prouvée sur le
+bundle, pas sur le conteneur : `node_modules/vite`,
+`node_modules/@tailwindcss/vite` et `node_modules/@vitejs/plugin-react` renommés
+temporairement, `NODE_ENV=production node dist/index.js` démarre et répond 200
+sur `/`, `/status/demo-services`, `/api/health`, `/api/plans`, `/dashboard` et
+`/qa`. Le détail est dans
 [`docs/03-infrastructure/deploiement.md`](docs/03-infrastructure/deploiement.md).
-La voie `node dist/index.js` ci-dessus, elle, fonctionne.
 
 ## Commandes
 
@@ -140,7 +148,7 @@ pnpm build            # assets client + bundle serveur
 pnpm start            # NODE_ENV=production node dist/index.js
 pnpm check            # tsc --noEmit
 pnpm lint             # oxlint --deny-warnings (aucun fichier de config)
-pnpm test             # vitest run : 22 fichiers, 219 tests
+pnpm test             # vitest run : 23 fichiers, 223 tests
 pnpm test:watch
 pnpm format           # prettier --write
 pnpm format:check     # prettier --check, exigé par le CI
@@ -177,7 +185,7 @@ manifeste racine (`pnpm-workspace.yaml`).
 | `server/qa`                    | Tickets, auto-tests, point quotidien, rapports et réponses clients                                                                                                  |
 | `server/scheduler`             | Tick, pool borné, endpoint cron, enregistrement plateforme, purge de rétention                                                                                      |
 | `server/routes`                | Agrégat transverse du dashboard                                                                                                                                     |
-| `server/_core`                 | Entrée Express, enveloppe d'erreur, contexte tRPC, sphère plateforme                                                                                                |
+| `server/_core`                 | Entrée Express, enveloppe d'erreur, déballage des erreurs pilote (`db-error.ts`), service des assets (`static.ts`), contexte tRPC, sphère plateforme                |
 | `shared/db`                    | **Schéma Drizzle et les huit migrations `0000`→`0007`** — pas de dossier `drizzle/`                                                                                 |
 | `shared/contracts.ts`          | Schémas zod partagés client/serveur                                                                                                                                 |
 | `scripts/make-cron-token.mjs`  | Utilitaire local : mint un JWT `cron_` pour piloter le pipeline sans la plateforme                                                                                  |
@@ -225,8 +233,10 @@ comptent :
   l'identité ;
 - les secrets de canaux sont chiffrés avant stockage, et les logs ne portent que
   des identifiants techniques — les événements d'administration ne mentionnent
-  jamais l'e-mail affecté ;
-- le corps de requête est plafonné à 64 ko (`server/_core/index.ts:38`), les
+  jamais l'e-mail affecté. Une panne de base ne journalise que le message du
+  pilote, jamais la requête et ses valeurs liées, que Drizzle enveloppe dans son
+  propre objet d'erreur (`server/_core/db-error.ts:47`) ;
+- le corps de requête est plafonné à 64 ko (`server/_core/index.ts:39`), les
   surfaces publiques sont limitées par IP.
 
 ## Périmètre
@@ -246,11 +256,14 @@ TCP/pong ICMP, SLA contractualisé.
 Liste volontairement dérangeante, parce qu'un README qui n'énumère que des forces
 ne sert pas à celui qui déploie.
 
-1. **L'image Docker ne démarre pas** — défaut reproductible, contournement et
-   correctif dans `docs/03-infrastructure/deploiement.md`.
+1. **L'image Docker n'a jamais été construite** — le défaut qui empêchait le
+   bundle de démarrer sans `devDependencies` est corrigé et prouvé sur le bundle,
+   mais Docker n'est pas installé sur la machine de développement : personne
+   n'a lancé `docker build` ni `docker run` sur cette image.
+   `docs/03-infrastructure/deploiement.md` dit exactement où en est la
+   vérification.
 2. **Aucun pipeline n'a jamais tourné à distance** — le dépôt n'a pas de remote
-   et porte une histoire à quatre commits ; le CI est écrit, pas éprouvé, et son
-   étape `docker run` échouerait sur le point 1.
+   et porte une histoire à sept commits ; le CI est écrit, pas éprouvé.
 3. **Les tests ne touchent jamais la base** — 45 handlers HTTP ne sont exercés
    par aucun test ; la couverture réelle est mesurée dans
    `docs/06-verification/tests-et-couverture.md`.

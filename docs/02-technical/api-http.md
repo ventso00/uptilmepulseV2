@@ -8,6 +8,7 @@
 > `GET /api/plans`, et documente pause/resume sans le garde-fou réel).
 
 Sources reluées intégralement : `server/_core/index.ts`, `server/_core/http.ts`,
+`server/_core/db-error.ts`, `server/_core/vite.ts`, `server/_core/static.ts`,
 `server/_core/trpc.ts`, `server/_core/systemRouter.ts`, `server/_core/oauth.ts`,
 `server/_core/context.ts`, `server/_core/sdk.ts`, `server/_core/env.ts`,
 `server/_core/publicConfig.ts`, `server/auth/routes.ts`, `server/auth/session.ts`,
@@ -32,40 +33,63 @@ Total documenté : **47 endpoints HTTP** (dont `GET
 
 `res.status(status).json({ error: { code, message } })`, plus un en-tête
 `Retry-After` (en secondes) posé seulement si fourni
-(`server/_core/http.ts:36-45`). Aucun autre champ n'existe dans l'enveloppe
+(`server/_core/http.ts:37-46`). Aucun autre champ n'existe dans l'enveloppe
 d'erreur. `asyncHandler` enveloppe chaque handler car Express 4 ne propage
-pas les rejets async au pipeline d'erreur (`server/_core/http.ts:11-34`), et
+pas les rejets async au pipeline d'erreur (`server/_core/http.ts:12-35`), et
 `errorHandler` doit rester le dernier middleware monté
-(`server/_core/index.ts:79-81`).
+(`server/_core/index.ts:80-82`).
 
 ### 1.2 `errorHandler` — table de correspondance terminale
 
-| Condition détectée                                                                                                                  | Réponse                                                   | Citation                               |
-| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------- |
-| `error.type === "entity.too.large"` (ou `status`/`statusCode` 413)                                                                  | 413 `PAYLOAD_TOO_LARGE` « Request body is too large »     | `server/_core/http.ts:124-127,141-147` |
-| `error.type === "entity.parse.failed"` (ou `status`/`statusCode` 400)                                                               | 400 `VALIDATION_ERROR` « Request body is malformed »      | `server/_core/http.ts:125-128,149`     |
-| code SQL/réseau ∈ `ECONNREFUSED`, `ETIMEDOUT`, `PROTOCOL_CONNECTION_LOST`, `ER_ACCESS_DENIED_ERROR`, `ENOTFOUND`, `ER_BAD_DB_ERROR` | 503 `DATABASE_UNAVAILABLE` + log JSON `database_error`    | `server/_core/http.ts:97-110,151-161`  |
-| tout le reste                                                                                                                       | 500 `INTERNAL_ERROR` + log JSON `unhandled_request_error` | `server/_core/http.ts:163-171`         |
+| Condition détectée                                                                                                                  | Réponse                                                   | Citation                              |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------- |
+| `error.type === "entity.too.large"` (ou `status`/`statusCode` 413)                                                                  | 413 `PAYLOAD_TOO_LARGE` « Request body is too large »     | `server/_core/http.ts:123,140-146`    |
+| `error.type === "entity.parse.failed"` (ou `status`/`statusCode` 400)                                                               | 400 `VALIDATION_ERROR` « Request body is malformed »      | `server/_core/http.ts:124,147-148`    |
+| code SQL/réseau ∈ `ECONNREFUSED`, `ETIMEDOUT`, `PROTOCOL_CONNECTION_LOST`, `ER_ACCESS_DENIED_ERROR`, `ENOTFOUND`, `ER_BAD_DB_ERROR` | 503 `DATABASE_UNAVAILABLE` + log JSON `database_error`    | `server/_core/http.ts:98-109,150-160` |
+| tout le reste                                                                                                                       | 500 `INTERNAL_ERROR` + log JSON `unhandled_request_error` | `server/_core/http.ts:162-170`        |
 
 Si les en-têtes sont déjà envoyés, l'erreur est repassée à `next` sans
-réponse (`server/_core/http.ts:136`).
+réponse (`server/_core/http.ts:135`).
+
+#### 1.2.1 Déballage de l'erreur pilote
+
+Drizzle 0.44.6 enveloppe **toute** requête en échec dans un
+`DrizzleQueryError` : son `message` est le SQL suivi des valeurs liées, son
+`code` est vide et l'erreur du pilote est sur `.cause`. Une panne de base
+arrive donc dans `errorHandler` sous cette enveloppe, et le code est lu à
+travers `.cause` par `driverErrorCode` (`server/_core/db-error.ts:17-24`,
+appelé `server/_core/http.ts:108,155`) — lire `error.code` sur l'objet jeté ne
+correspondait à rien, la liste `DATABASE_HINTS` (`server/_core/http.ts:98-105`)
+ne matchait jamais. Le message journalisé et renvoyé est celui du pilote,
+jamais la requête : `safeErrorMessage` (`server/_core/db-error.ts:47-55`,
+appelé `server/_core/http.ts:137`) écarte le texte SQL et ses valeurs liées,
+qui contiennent des noms de colonnes et des secrets. Le même déballage sert aux
+conflits d'index unique (`isDuplicateKeyError`, `server/_core/db-error.ts:26-41`,
+appels `server/statuspages/routes.ts:126`, `server/qa/runs.ts:25`,
+`server/notifications/dispatcher.ts:123`).
 
 ### 1.3 `notFoundHandler` sur `/api/*`
 
 `app.use("/api", notFoundHandler)` : tout chemin API inconnu répond
 404 `NOT_FOUND` « Route not found » en JSON, et surtout ne retombe jamais
 sur le SPA (qui répondrait 200 + HTML à un client JSON)
-(`server/_core/index.ts:68-70`, `server/_core/http.ts:174-176`).
+(`server/_core/index.ts:69-71`, `server/_core/http.ts:173-175`). Le repli
+SPA est monté de l'autre côté de ce garde : `serveStatic` pose son fallback sans
+chemin et ne sert la coque HTML que si le chemin ne commence pas par `/api/`
+et n'a pas d'extension, un asset manquant répond donc 404
+(`server/_core/static.ts:26-30`, commentaire `:18-25`) ; en développement le
+repli SPA est le `app.use("*", ...)` de `setupVite` (`server/_core/vite.ts:23`,
+monté `server/_core/index.ts:74-78`).
 
 ### 1.4 Montage global (avant toutes les routes)
 
 | Mesure                             | Valeur                                                                                                                                                        | Citation                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `x-powered-by`                     | désactivé                                                                                                                                                     | `server/_core/index.ts:25`    |
-| `trust proxy`                      | `1` (un seul mandataire en amont ; conditionne `req.ip`, donc toutes les clés de rate limit basées sur l'IP)                                                  | `server/_core/index.ts:26`    |
-| En-têtes posés sur chaque réponse  | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`         | `server/_core/index.ts:27-35` |
-| Limite de corps JSON et urlencoded | **64 kb** (l'ancienne limite 50 mb était une surface de DDoS ; aucune route n'accepte un payload plus gros)                                                   | `server/_core/index.ts:36-39` |
-| Ordre d'enregistrement             | OAuth → auth → monitors → dashboard → scheduler → notifications → statuspages → QA → plans → admin → tRPC → `notFoundHandler` → SPA/statique → `errorHandler` | `server/_core/index.ts:50-81` |
+| `x-powered-by`                     | désactivé                                                                                                                                                     | `server/_core/index.ts:26`    |
+| `trust proxy`                      | `1` (un seul mandataire en amont ; conditionne `req.ip`, donc toutes les clés de rate limit basées sur l'IP)                                                  | `server/_core/index.ts:27`    |
+| En-têtes posés sur chaque réponse  | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`         | `server/_core/index.ts:28-36` |
+| Limite de corps JSON et urlencoded | **64 kb** (l'ancienne limite 50 mb était une surface de DDoS ; aucune route n'accepte un payload plus gros)                                                   | `server/_core/index.ts:37-40` |
+| Ordre d'enregistrement             | OAuth → auth → monitors → dashboard → scheduler → notifications → statuspages → QA → plans → admin → tRPC → `notFoundHandler` → SPA/statique → `errorHandler` | `server/_core/index.ts:51-82` |
 
 ### 1.5 Rate limiter : le moteur
 
@@ -89,14 +113,14 @@ compteur. Journal complet §7.
   `expiresAt > now` (`server/auth/session.ts:46-67`).
 - TTL : 30 jours (`SESSION_TTL_MS`, `server/auth/session.ts:9`) ; le cookie
   est `httpOnly, secure, sameSite=none, path=/` (`server/auth/session.ts:16-22`).
-- Garde REST : `requireUser` (`server/_core/http.ts:61-77`) — après la
+- Garde REST : `requireUser` (`server/_core/http.ts:62-78`) — après la
   session, l'adresse du compte doit être celle du créateur
   (`isOwnerEmail`, `server/auth/owner.ts:19-21`, variable
   `UPTIMEPULSE_OWNER_EMAIL`) ; sinon 403 `ACCESS_RESERVED`
-  (`server/_core/http.ts:72-75`). L'utilisateur résolu est mémoïsé sur la
+  (`server/_core/http.ts:73-76`). L'utilisateur résolu est mémoïsé sur la
   requête pour que REST + contexte tRPC ne paient qu'une jointure
-  (`server/_core/http.ts:65-67`). `requireAdmin` ajoute `users.role === 'admin'`
-  et répond un 403 `FORBIDDEN` indiscernable (`server/_core/http.ts:84-95`).
+  (`server/_core/http.ts:66-68`). `requireAdmin` ajoute `users.role === 'admin'`
+  et répond un 403 `FORBIDDEN` indiscernable (`server/_core/http.ts:85-96`).
 
 ### Royaume B — jeton de reporter QA (dans le CHEMIN)
 
@@ -124,7 +148,7 @@ Le battement est enregistré auprès du service de cron de la plateforme
 activé seulement si `MANUS_API_URL`/`MANUS_API_KEY` existent
 (`server/scheduler/register.ts:7`, `server/_core/env.ts:22-27`). Un ordonnanceur
 interne de secours démarre aussi à l'écoute (`startInternalScheduler`,
-`server/_core/index.ts:92-93`). Qui signe le premier JWT `cron_` : émission
+`server/_core/index.ts:94`). Qui signe le premier JWT `cron_` : émission
 côté plateforme, **non vérifié** dans le dépôt.
 
 ### Royaume D — anonyme
@@ -132,7 +156,7 @@ côté plateforme, **non vérifié** dans le dépôt.
 Aucun garde : `GET /api/health`, `GET /api/platform/config.js`,
 `GET /api/plans`, `GET /api/public/status/:slug`,
 `POST /api/public/qa/tickets` (intake). Les surfaces publiques ne passent
-jamais par `requireUser` (`server/_core/http.ts:56-59`, commentaire
+jamais par `requireUser` (`server/_core/http.ts:60`, commentaire
 d'archive) ; la publication d'un `PUT /api/status-page` et de l'intake QA
 compense par rate limit + bornes zod strictes.
 
@@ -142,7 +166,7 @@ Grep de `trpc|TRPC|appRouter` sous `client/` : zéro occurrence de code ;
 seul le commentaire de `client/src/main.tsx:6-11` confirme que le client
 tRPC, React Query et superjson ont été retirés du bundle ; l'accès aux
 données passe par le client REST typé (`client/src/main.tsx:7`).
-Pourtant tRPC reste monté (`server/_core/index.ts:61-67`,
+Pourtant tRPC reste monté (`server/_core/index.ts:62-68`,
 `createExpressMiddleware` sur `/api/trpc`) avec exactement deux procédures
 (`server/routers.ts:4-10`, commentaire : « kept only for the platform
 health probe ») :
@@ -168,7 +192,7 @@ C = JWT cron, D = anonyme. « garde » = la fonction appelée dans le handler.
 
 #### GET /api/health — D, aucun garde, aucune limite
 
-- Réponse : `{ "status": "ok" }`, `Cache-Control: no-store` (`server/_core/index.ts:40-43`).
+- Réponse : `{ "status": "ok" }`, `Cache-Control: no-store` (`server/_core/index.ts:41-44`).
 - Codes : 200 uniquement.
 
 #### GET /api/platform/config.js — D, aucun garde, aucune limite
@@ -179,11 +203,11 @@ C = JWT cron, D = anonyme. « garde » = la fonction appelée dans le handler.
   les **noms** de variables `MANUS_PROJECT_ID`, `MANUS_OAUTH_PORTAL_URL`,
   `MANUS_API_URL`, `MANUS_API_BROWSER_KEY` ; `<` est échappé en `\u003c`
   contre l'injection de script (`server/_core/publicConfig.ts:1-19`,
-  `server/_core/index.ts:44-49`).
+  `server/_core/index.ts:45-50`).
 
 #### GET /api/trpc/\* — voir §2 (montage dormant côté client)
 
-- `server/_core/index.ts:61-67`.
+- `server/_core/index.ts:62-68`.
 
 ### 3.1 Authentification applicative (`server/auth/routes.ts`)
 
@@ -237,7 +261,7 @@ Le champ `user` des réponses suit `publicUser` = `{ id, email, name, role }`
 - Aucune limite. Réponse 200 `{ user }`, `Cache-Control: private, no-store`
   (`server/auth/routes.ts:221-229`).
 - Codes : 401 `UNAUTHORIZED`, 403 `ACCESS_RESERVED`
-  (`server/_core/http.ts:69,73`), 503 (`server/auth/session.ts:50-51`
+  (`server/_core/http.ts:70,74`), 503 (`server/auth/session.ts:50-51`
   renvoie null → 401).
 
 #### POST /api/auth/password — A, `requireUser`
@@ -305,7 +329,7 @@ Garde d'écriture commun `limitMonitorWrites` : clé
 
 #### GET /api/monitors/:id/history — A, `requireUser`, aucune limite
 
-- Params/query : `:id` entier > 0 via `parseId` (`server/_core/http.ts:47-50`) ;
+- Params/query : `:id` entier > 0 via `parseId` (`server/_core/http.ts:48-51`) ;
   `period` ∈ `24h|7d|30d`, défaut `24h` (`shared/contracts.ts:51`,
   `server/monitors/routes.ts:31-35`) ; `limit` entier, défaut 240, plafond
   500 (`server/monitors/routes.ts:25-26,37-45,258-262`) ;
@@ -425,11 +449,14 @@ Sérialisation `{ id, slug, title, description, createdAt }` (`:13-21`).
   (`shared/contracts.ts:325-332`) ; `title` = `monitorNameSchema` 1–120 ;
   `description` trim max 500, nullish, défaut null.
 - Upsert : update si la page du compte existe, sinon insert
-  (`server/statuspages/routes.ts:94-123`) ; message zod du premier problème
+  (`server/statuspages/routes.ts:95-124`) ; message zod du premier problème
   renvoyé tel quel (`:72-79`).
-- Codes : 429, 401/403, 400 `VALIDATION_ERROR`, 409 `SLUG_TAKEN` sur
-  `ER_DUP_ENTRY` (`:124-132`), 500 `INTERNAL_ERROR` si la relue post-insert
-  est vide (`:115-121`), 503.
+- Codes : 429, 401/403, 400 `VALIDATION_ERROR`, 409 `SLUG_TAKEN` dès que
+  `isDuplicateKeyError` reconnaît le conflit d'index unique — le test lit le
+  code du pilote sur `.cause`, là où une lecture directe de `ER_DUP_ENTRY` sur
+  l'erreur Drizzle ne correspondait jamais (`:126-132`,
+  `server/_core/db-error.ts:26-41`), 500 `INTERNAL_ERROR` si la relue
+  post-insert est vide (`:116-122`), 503.
 - Réponse : `{ statusPage }`.
 
 #### DELETE /api/status-page — A, `requireUser` + `status-page-write:{ip}`
@@ -629,7 +656,7 @@ startedAt, finishedAt, results[] }` (`shared/contracts.ts:814-834`).
 
 #### GET /api/admin/overview — A+, `requireAdmin`, aucune limite
 
-- `requireAdmin` = session + owner + rôle admin (`server/_core/http.ts:84-95`).
+- `requireAdmin` = session + owner + rôle admin (`server/_core/http.ts:85-96`).
 - Plafond de comptes rendus : 200, tri `lastSignedIn DESC`
   (`server/admin/routes.ts:31,193-208`).
 - Les comptes sans plan explicite (`planId NULL`) sont repliés sur la
@@ -700,36 +727,36 @@ batchSize }` (`:31-36`).
 
 | Code                   | HTTP | Émis par / où                                                                                                   | Citation                                                                                                           |
 | ---------------------- | ---- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `UNAUTHORIZED`         | 401  | `requireUser` sans session valide ; callback cron                                                               | `server/_core/http.ts:69` ; `server/scheduler/routes.ts:16-20`                                                     |
-| `ACCESS_RESERVED`      | 403  | `requireUser` : session valide mais compte ≠ créateur                                                           | `server/_core/http.ts:72-75`                                                                                       |
+| `UNAUTHORIZED`         | 401  | `requireUser` sans session valide ; callback cron                                                               | `server/_core/http.ts:70` ; `server/scheduler/routes.ts:16-20`                                                     |
+| `ACCESS_RESERVED`      | 403  | `requireUser` : session valide mais compte ≠ créateur                                                           | `server/_core/http.ts:73-76`                                                                                       |
 | `REGISTRATION_CLOSED`  | 403  | register : adresse ≠ créateur, refus avant bcrypt                                                               | `server/auth/routes.ts:89-95`                                                                                      |
 | `EMAIL_TAKEN`          | 409  | register : `emailNormalized` déjà présent                                                                       | `server/auth/routes.ts:101-107`                                                                                    |
 | `INVALID_CREDENTIALS`  | 401  | login : mot de passe faux, COMPTE INCONNU, et compte valide mais non créateur (réponse identique, pas d'oracle) | `server/auth/routes.ts:185-191,196-202`                                                                            |
 | `RATE_LIMITED`         | 429  | toute la couche rate limit (voir §7), toujours avec `Retry-After`                                               | `server/auth/routes.ts:46-53` et homologues (§7)                                                                   |
 | `QUOTA_EXCEEDED`       | 409  | `respondPlanError` sur QuotaExceededError — POST monitors, POST notification-channels                           | `server/plans/respond.ts:14-21` ; `server/monitors/routes.ts:199` ; `server/notifications/routes.ts:104`           |
 | `FEATURE_UNAVAILABLE`  | 403  | `respondPlanError` sur FeatureUnavailableError — keyword sur plan qui ne l'autorise pas                         | `server/plans/respond.ts:23-31` ; `server/monitors/routes.ts:183,395`                                              |
-| `VALIDATION_ERROR`     | 400  | rejet zod de chaque route ; JSON du parser (`entity.parse.failed`) ; PlanLimitError (borne de plan)             | `server/_core/http.ts:149` ; `server/plans/respond.ts:32-42` ; ex. `server/auth/routes.ts:66-73`                   |
+| `VALIDATION_ERROR`     | 400  | rejet zod de chaque route ; JSON du parser (`entity.parse.failed`) ; PlanLimitError (borne de plan)             | `server/_core/http.ts:147-148` ; `server/plans/respond.ts:32-42` ; ex. `server/auth/routes.ts:66-73`               |
 | `INVALID_TRANSITION`   | 409  | PATCH ticket : statut refusé par `QA_STATUS_TRANSITIONS`, motif dans `message`                                  | `server/qa/routes.ts:483-488` ; `shared/contracts.ts:626-634`                                                      |
-| `DATABASE_UNAVAILABLE` | 503  | pré-check `getDb()` de chaque route + `errorHandler` sur les codes pilote/SQL                                   | `server/_core/http.ts:97-110,151-161` ; ex. `server/auth/routes.ts:76-82`                                          |
-| `NOT_FOUND`            | 404  | `notFoundHandler` sur `/api/*` ; et 404 applicatifs (monitors, channels, tickets, digest, slug public, admin)   | `server/_core/http.ts:174-176` ; ex. `server/monitors/routes.ts:248-249`                                           |
-| `PAYLOAD_TOO_LARGE`    | 413  | `errorHandler` sur `entity.too.large` — corps > 64 kb                                                           | `server/_core/http.ts:124,141-147` ; limite `server/_core/index.ts:38-39`                                          |
-| `FORBIDDEN`            | 403  | `requireAdmin` : compte valide, rôle ≠ admin — réponse indiscernable d'un refus ordinaire                       | `server/_core/http.ts:84-95`                                                                                       |
-| `INTERNAL_ERROR`       | 500  | `errorHandler` (fourre-tout final) ; relecture post-écriture vide (status-page, plans)                          | `server/_core/http.ts:163-171` ; `server/statuspages/routes.ts:115-121` ; `server/admin/routes.ts:337-343,426-431` |
+| `DATABASE_UNAVAILABLE` | 503  | pré-check `getDb()` de chaque route + `errorHandler` sur les codes pilote/SQL, **lus sur `.cause`** (§1.2.1)    | `server/_core/http.ts:98-109,150-160` ; `server/_core/db-error.ts:17-24` ; ex. `server/auth/routes.ts:76-82`       |
+| `NOT_FOUND`            | 404  | `notFoundHandler` sur `/api/*` ; et 404 applicatifs (monitors, channels, tickets, digest, slug public, admin)   | `server/_core/http.ts:173-175` ; ex. `server/monitors/routes.ts:248-249`                                           |
+| `PAYLOAD_TOO_LARGE`    | 413  | `errorHandler` sur `entity.too.large` — corps > 64 kb                                                           | `server/_core/http.ts:123,140-146` ; limite `server/_core/index.ts:39-40`                                          |
+| `FORBIDDEN`            | 403  | `requireAdmin` : compte valide, rôle ≠ admin — réponse indiscernable d'un refus ordinaire                       | `server/_core/http.ts:85-96`                                                                                       |
+| `INTERNAL_ERROR`       | 500  | `errorHandler` (fourre-tout final) ; relecture post-écriture vide (status-page, plans)                          | `server/_core/http.ts:162-170` ; `server/statuspages/routes.ts:116-122` ; `server/admin/routes.ts:337-343,426-431` |
 
 Codes hors de la liste des quinze, réellement dans le code :
 
-| Code                                | HTTP | Route                                    | Citation                                                                   |
-| ----------------------------------- | ---- | ---------------------------------------- | -------------------------------------------------------------------------- |
-| `INVALID_PASSWORD`                  | 400  | POST /api/auth/password                  | `server/auth/routes.ts:264-269`                                            |
-| `REGISTRATION_FAILED`               | 500  | POST /api/auth/register                  | `server/auth/routes.ts:136-142`                                            |
-| `INVALID_TARGET` / `BLOCKED_TARGET` | 400  | POST/PUT monitors (SSRF syntaxe)         | `server/monitors/routes.ts:95-105` ; `server/monitors/ssrf.ts:5-13,62-102` |
-| `MONITOR_PAUSED`                    | 409  | POST /api/monitors/:id/check             | `server/monitors/routes.ts:492-498`                                        |
-| `CHECK_IN_PROGRESS`                 | 409  | POST /api/monitors/:id/check             | `server/monitors/routes.ts:519-525`                                        |
-| `SLUG_TAKEN`                        | 409  | PUT /api/status-page (`ER_DUP_ENTRY`)    | `server/statuspages/routes.ts:124-132`                                     |
-| `DELIVERY_FAILED`                   | 502  | POST /api/notification-channels/:id/test | `server/notifications/routes.ts:196-203`                                   |
-| `INVALID_ID`                        | 400  | routes QA opérateur (:id non numérique)  | `server/qa/routes.ts:411-413,436-437,517-518,567-568`                      |
-| `RUN_IN_PROGRESS`                   | 409  | POST digest/run, self-tests/run          | `server/qa/routes.ts:644-650,670-676`                                      |
-| `CONFLICT`                          | 409  | POST/PUT /api/admin/plans… (slug)        | `server/admin/routes.ts:324-330,387-418`                                   |
+| Code                                | HTTP | Route                                         | Citation                                                                   |
+| ----------------------------------- | ---- | --------------------------------------------- | -------------------------------------------------------------------------- |
+| `INVALID_PASSWORD`                  | 400  | POST /api/auth/password                       | `server/auth/routes.ts:264-269`                                            |
+| `REGISTRATION_FAILED`               | 500  | POST /api/auth/register                       | `server/auth/routes.ts:136-142`                                            |
+| `INVALID_TARGET` / `BLOCKED_TARGET` | 400  | POST/PUT monitors (SSRF syntaxe)              | `server/monitors/routes.ts:95-105` ; `server/monitors/ssrf.ts:5-13,62-102` |
+| `MONITOR_PAUSED`                    | 409  | POST /api/monitors/:id/check                  | `server/monitors/routes.ts:492-498`                                        |
+| `CHECK_IN_PROGRESS`                 | 409  | POST /api/monitors/:id/check                  | `server/monitors/routes.ts:519-525`                                        |
+| `SLUG_TAKEN`                        | 409  | PUT /api/status-page (conflit d'index unique) | `server/statuspages/routes.ts:126-132` ; `server/_core/db-error.ts:26-41`  |
+| `DELIVERY_FAILED`                   | 502  | POST /api/notification-channels/:id/test      | `server/notifications/routes.ts:196-203`                                   |
+| `INVALID_ID`                        | 400  | routes QA opérateur (:id non numérique)       | `server/qa/routes.ts:411-413,436-437,517-518,567-568`                      |
+| `RUN_IN_PROGRESS`                   | 409  | POST digest/run, self-tests/run               | `server/qa/routes.ts:644-650,670-676`                                      |
+| `CONFLICT`                          | 409  | POST/PUT /api/admin/plans… (slug)             | `server/admin/routes.ts:324-330,387-418`                                   |
 
 ---
 
@@ -771,7 +798,7 @@ uniquement à sa définition (`server/_core/sdk.ts:265`) et ses commentaires
 (`server/_core/sdk.ts:338`, `docs/04-project/documentation-ledger.md:140`).
 
 1. **Domaine OAuth plateforme** — `GET /api/oauth/callback` est bien
-   monté (`server/_core/index.ts:50`, `server/_core/oauth.ts:18-82`) :
+   monté (`server/_core/index.ts:51`, `server/_core/oauth.ts:18-82`) :
    garde CSRF sur le nonce `__Host-oauth_state`
    (`shared/const.ts:11`, `server/_core/oauth.ts:31-43`), échange
    code→token→userInfo via le SDK (`:46-47`), upsert de l'utilisateur
@@ -791,7 +818,7 @@ uniquement à sa définition (`server/_core/sdk.ts:265`) et ses commentaires
    (`isCron`, `taskUid`, `:292-299`) n'est appelé par AUCUNE route du
    dépôt ; le contexte tRPC lui-même utilise `getApplicationUser`, pas le
    SDK (`server/_core/context.ts:16`). **Dormant.**
-3. **Montage tRPC `/api/trpc`** — monté (`server/_core/index.ts:61-67`)
+3. **Montage tRPC `/api/trpc`** — monté (`server/_core/index.ts:62-68`)
    avec les deux procédures `system.health` / `system.notifyOwner`
    (§2) ; le client REST ne l'appelle pas (`client/src/main.tsx:6-11`) ;
    réservé à la sonde de santé de la plateforme
@@ -816,7 +843,7 @@ fenêtre fixe, refus 429 + `Retry-After` (`server/auth/rateLimit.ts:33-61`).
 | `monitor-write:{ip}`     | 30     | 60 s    | POST /api/monitors ; PUT/DELETE /api/monitors/:id ; POST check, pause, resume    | `server/monitors/routes.ts:107-122`, appels `:158,367,445,471,547` |
 | `channel:{userId}`       | 5      | 15 min  | POST /api/notification-channels                                                  | `server/notifications/routes.ts:73`                                |
 | `channel-test:{userId}`  | 3      | 15 min  | POST /api/notification-channels/:id/test                                         | `server/notifications/routes.ts:163`                               |
-| `status-page-write:{ip}` | 20     | 60 s    | PUT, DELETE /api/status-page                                                     | `server/statuspages/routes.ts:23-38`, appels `:69,142`             |
+| `status-page-write:{ip}` | 20     | 60 s    | PUT, DELETE /api/status-page                                                     | `server/statuspages/routes.ts:24-39`, appels `:69,142`             |
 | `public-status:{ip}`     | 60     | 60 s    | GET /api/public/status/:slug                                                     | `server/statuspages/routes.ts:161-165`                             |
 | `qa-intake:{ip}`         | 10     | 15 min  | POST /api/public/qa/tickets                                                      | `server/qa/routes.ts:165` (clé `:87-88`)                           |
 | `qa-followup-read:{ip}`  | 60     | 60 s    | GET /api/public/qa/tickets/:token                                                | `server/qa/routes.ts:246`                                          |

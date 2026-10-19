@@ -22,7 +22,7 @@ Fichiers couverts : `server/notifications/{dispatcher,telegram,crypto,routes}.ts
   promesse** : la branche de dispatch est un test littéral
   `channel.type === "telegram" ? decryptTelegramConfig(...) : null`, et `null`
   lève `Unsupported notification channel`
-  (`server/notifications/dispatcher.ts:56-60`). Il n'y a pas de registre, pas de
+  (`server/notifications/dispatcher.ts:57-61`). Il n'y a pas de registre, pas de
   typage d'adaptateur, pas de second constructeur.
 - L'envoi est codé en dur sur Telegram : `sendTelegramMessage` est le seul
   émetteur appelé, tant pour une alerte (`dispatcher.ts:61`) que pour le test
@@ -97,7 +97,7 @@ Fichiers couverts : `server/notifications/{dispatcher,telegram,crypto,routes}.ts
 
 - Un seul appelant de `dispatchIncidentNotification` : le moteur de check, et
   seulement quand `incidentAction !== "none"`
-  (`server/checks/engine.ts:35-39`).
+  (`server/checks/engine.ts:36-40`).
 - `incidentAction` ne vaut `"failure"` que sur une transition `confirmed`, et
   `"recovery"` que sur une transition `resolved`
   (`engine.ts:172`, `:194`, `:213`).
@@ -121,7 +121,7 @@ Fichiers couverts : `server/notifications/{dispatcher,telegram,crypto,routes}.ts
 
 ### 3.1 Message exact
 
-`formatMessage` (`server/notifications/dispatcher.ts:28-43`), lignes jointes par
+`formatMessage` (`server/notifications/dispatcher.ts:29-44`), lignes jointes par
 `\n` (`:42`) :
 
 | #   | Ligne                                                                | Source          |
@@ -169,29 +169,39 @@ Fichiers couverts : `server/notifications/{dispatcher,telegram,crypto,routes}.ts
   peuvent pas créer deux avertissements pour le même incident sur le même canal
   — la seconde insertion heurte l'index.
 - Insertion : `status: "pending"`, `attempts: 0`
-  (`dispatcher.ts:123-129`), **avant** tout envoi — la file existe donc même si
+  (`dispatcher.ts:111-117`), **avant** tout envoi — la file existe donc même si
   le process meurt dans la seconde.
-- Conflit de clé : `isDuplicateKeyError` reconnaît `ER_DUP_ENTRY` (MySQL),
-  le code `23505`, ou un message contenant `Duplicate entry`
-  (`dispatcher.ts:105-115`) — l'aplatissement par les drivers/proxies est
-  couvert volontairement (`:108-109`).
+- Conflit de clé : `isDuplicateKeyError` ne vit plus dans `dispatcher.ts`, il est
+  partagé dans `server/_core/db-error.ts:26`. L'erreur jetée est une enveloppe de
+  requête (`DrizzleQueryError`, Drizzle 0.44.6) : son `message` porte le SQL et
+  ses valeurs liées, elle n'a **aucun `.code` propre**, et l'authentique erreur
+  du pilote est sur `.cause` — le test historique `error.code === "ER_DUP_ENTRY"`
+  ne se déclenchait donc jamais. `isDuplicateKeyError` descend la chaîne des
+  `.cause` jusqu'à cinq niveaux (la marche `driverErrorCode`, `db-error.ts:17`)
+  et reconnaît `ER_DUP_ENTRY` (MySQL) ou le code `23505` (`db-error.ts:29`) sur
+  n'importe quel niveau, ou un message contenant `Duplicate entry` porté par un
+  niveau qui n'est pas lui-même une enveloppe de requête (`db-error.ts:31-37`) ;
+  c'est là que l'aplatissement par les drivers/proxies reste couvert. La même
+  fonction sert à `server/qa/runs.ts:25`, `server/statuspages/routes.ts:126` et
+  ici.
 - Reprise sur la ligne existante : re-sélection par le triplet
-  (`dispatcher.ts:146-156`), puis :
-  - `status === "sent"` → `null`, on n'envoie **pas** deux fois (`:157`) ;
+  (`dispatcher.ts:134-144`), puis :
+  - `status === "sent"` → `null`, on n'envoie **pas** deux fois (`:145`) ;
   - `pending` ou `failed` → l'id de la ligne est renvoyé et l'envoi reprend
-    dessus (`:158`, puis `dispatcher.ts:178-179`).
+    dessus (`:146`, puis `dispatcher.ts:165-167`).
 - Distinction importante : seuls les conflits d'unicité sont traités comme
   « déjà en file ». Toute autre erreur d'insertion est journalisée
   `notification_delivery_insert_failed` **puis relancée**
-  (`dispatcher.ts:131-145`) : avaler une panne de base l'aurait confondue avec
+  (`dispatcher.ts:123-133`) : avaler une panne de base l'aurait confondue avec
   un dédupissage réussi et l'alerte était perdue en silence (commentaire
-  `:132-134`).
+  `:120-122`).
 - Un incident peut donc produire au plus : 1 ligne `failure` + 1 ligne
   `recovery` par canal.
 - Faiblesse assumée : `dispatchIncidentNotification` écrivant la ligne
-  lui-même (`:177`), si le process meurt entre la transaction de confirmation
-  (`engine.ts:184-194`) et l'insertion, aucune ligne n'existe — la reprise ne
-  peut rien rejouer. Non vérifié : aucun mécanisme de rattrapage de ce cas.
+  lui-même (`dispatcher.ts:165`), si le process meurt entre la transaction de
+  confirmation (`engine.ts:185-194`) et l'insertion, aucune ligne n'existe — la
+  reprise ne peut rien rejouer. Non vérifié : aucun mécanisme de rattrapage de
+  ce cas.
 
 ---
 
@@ -199,7 +209,7 @@ Fichiers couverts : `server/notifications/{dispatcher,telegram,crypto,routes}.ts
 
 - Point d'entrée : `retryFailedNotificationDeliveries()` appelé **en tête de
   chaque passe** du tick, avant la sélection des monitors
-  (`server/scheduler/tick.ts:36-38`) ; ses échecs sont journalisés
+  (`server/scheduler/tick.ts:37-39`) ; ses échecs sont journalisés
   `notification_retry_error` sans bloquer les checks (`tick.ts:39-46`).
 - Signature et bornes (`dispatcher.ts:183-212`) :
 
@@ -230,7 +240,7 @@ offset` (`dispatcher.ts:54`), et `previousAttempts` est l'`attempts` lu de la
   (toutes les 30 s avec la boucle interne, `loop.ts:18`) jusqu'à suppression ou
   succès.
 - **Invariant d'auto-test** : `MAX_ATTEMPTS_BEFORE_EXHAUSTED = 3`
-  (`server/qa/selfTest.ts:36`) sélectionne `status = 'failed' AND attempts >= 3`
+  (`server/qa/selfTest.ts:37`) sélectionne `status = 'failed' AND attempts >= 3`
   (`selfTest.ts:284-287`). Il sonne donc **dès la première passe entièrement
   échouée** — ce n'est pas « trois passes ratées », c'est « trois tentatives
   consommées », et une seule passe les consomme (`dispatcher.ts:53-54`).
@@ -324,7 +334,7 @@ offset` (`dispatcher.ts:54`), et `previousAttempts` est l'`attempts` lu de la
   appel (`:41-43`), carte bornée à 10 000 clés avec purge opportuniste
   (`:10`, `:17-31`). Il ne survit donc pas à un redémarrage et n'est pas partagé
   entre instances.
-- Le routeur est branché au boot HTTP (`server/_core/index.ts:55`), dans le
+- Le routeur est branché au boot HTTP (`server/_core/index.ts:56`), dans le
   même enfilement que les routes de scheduler.
 
 ---
@@ -361,7 +371,7 @@ Comment observer un échec d'envoi, dans l'ordre pratique :
 3. La file qui ne se vide pas : `status = 'failed'` et `attempts` qui croît de
    3 par passe signale une cause durable (canal révoqué, clé tournée,
    `chatId` invalide) (`dispatcher.ts:54`, `:203-212`).
-4. L'auto-test QA : invariant `notification_exhausted` (`server/qa/selfTest.ts:272-303`),
+4. L'auto-test QA : invariant `notification_exhausted` (`server/qa/selfTest.ts:273-304`),
    qui ouvre un ticket P3 — c'est le seul chemin par lequel un échec remonte
    jusqu'à l'interface d'exploitation.
 5. La route de test : `POST /api/notification-channels/:id/test` (`routes.ts:158`)

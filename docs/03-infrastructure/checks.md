@@ -25,8 +25,8 @@ mois dow`, UTC, intervalle minimal 60 s (`server/_core/heartbeat.ts:6-9`) ; le
   chemin doit commencer par `/api/scheduled/` (`heartbeat.ts:127-134`).
 - Branchement au démarrage : `ensureHeartbeatJob()` puis
   `startInternalScheduler()` dans le callback `server.listen`
-  (`server/_core/index.ts:92-93`).
-- **Pourquoi la boucle interne existe** : le commentaire de `loop.ts:6-13` est
+  (`server/_core/index.ts:93-94`).
+- **Pourquoi la boucle interne existe** : le commentaire de `loop.ts:7-14` est
   explicite — le heartbeat est un déclencheur _externe seulement_, « nothing
   guarantees it fires » : absent en local, perdu silencieusement si le service
   plateforme bronche. Sans tick, aucun monitor ne sort de `UNKNOWN` et le
@@ -58,7 +58,7 @@ SELECT id FROM monitors
  LIMIT 50
 ```
 
-- Requête exacte : `server/scheduler/tick.ts:47-54`.
+- Requête exacte : `server/scheduler/tick.ts:48-55`.
 - Taille du lot : `BATCH_SIZE = 50` (`server/scheduler/limits.ts:1`), importé
   et exposé par `routes.ts:6-8` et `:35`.
 - Aucun filtre par utilisateur : le lot est mondial, trié par ancienneté
@@ -94,7 +94,7 @@ UPDATE monitors SET nextCheckAt = now + 6 min
  WHERE id = ? AND enabled = 1 AND nextCheckAt <= now
 ```
 
-- Écriture exacte : `server/checks/engine.ts:96-106` ; le claim est perdu si
+- Écriture exacte : `server/checks/engine.ts:97-107` ; le claim est perdu si
   `affectedRows === 0`, et `runCheck` renvoie `null` (`engine.ts:107`) — donc
   `runMonitorCheck` renvoie `null` (`engine.ts:32-33`).
 - Rend possible l'exécution sans double traitement entre : deux instances du

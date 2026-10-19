@@ -60,7 +60,7 @@ Deux classifications sont nées pour ça : `DOWN_KEYWORD_MISSING` (« Contenu at
 
 ## Console créateur
 
-Accès : colonne existante `users.role` (`"user"` / `"admin"`). Aucune migration d'accès n'a été nécessaire ; `requireAdmin` (`server/_core/http.ts`) lit la session et répond `403 FORBIDDEN`, et il est testé (`server/_core/http.test.ts`).
+Accès : colonne existante `users.role` (`"user"` / `"admin"`). Aucune migration d'accès n'a été nécessaire ; `requireAdmin` (`server/_core/http.ts:85-96`) lit la session et répond `403 FORBIDDEN`, et il est testé (`server/_core/http.test.ts:84-107`). Les écritures de la console détectent le slug déjà pris par une relecture explicite (`server/admin/routes.ts:319-330`), pas par un code d'erreur du pilote : elles échappent au déballage de l'enveloppe Drizzle que nécessite le `409 SLUG_TAKEN` des pages de statut (`server/statuspages/routes.ts:126`, `server/_core/db-error.ts:26-41`).
 
 | route                                               | usage                                                                                                              |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |

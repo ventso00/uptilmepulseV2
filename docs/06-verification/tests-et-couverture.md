@@ -1,11 +1,11 @@
 # Stratégie de tests et couverture
 
 Cette page décrit la vérification **telle qu'elle existe dans le dépôt**, en
-se fondant uniquement sur : `vitest.config.ts`, les 22 fichiers `*.test.ts`,
+se fondant uniquement sur : `vitest.config.ts`, les 23 fichiers `*.test.ts`,
 `package.json`, `.github/workflows/ci.yml`, `CONTRIBUTING.md` et les fichiers
 source qu'ils importent. Tout a été vérifié par lecture ; le total de tests a
 été vérifié par exécution de `pnpm exec vitest run`
-(22 fichiers verts, 219 tests, ~3,6 s sur l'environnement de développement).
+(23 fichiers verts, 223 tests, ~4,2 s sur l'environnement de développement).
 
 ## 1. Configuration
 
@@ -45,50 +45,51 @@ cas). Seul `ssrf.test.ts` diffère : ses 4 `it.each`
 (`server/monitors/ssrf.test.ts:14`, `:40`, `:49`, `:59`) produisent
 9 + 4 + 5 + 3 = 21 cas, soit 24 tests pour 7 blocs.
 
-| Fichier                               | Ce qu'il verrouille                                                                                                      |   Blocs |   Tests |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------: | ------: |
-| `client/src/lib/qaContext.test.ts`    | Tampon de preuves client : route sans query string, captures de 10, troncature 300/60, instant injecté                   |       7 |       7 |
-| `server/_core/http.test.ts`           | Gardes `requireUser`/`requireAdmin` (401/403/owner, session lue 1×) et `asyncHandler` ; `vi.mock` de la session (`:3-4`) |       8 |       8 |
-| `server/auth/owner.test.ts`           | Comparaison d'adresse propriétaire : casse/espaces, suffixe trompeur refusé, override `UPTIMEPULSE_OWNER_EMAIL`          |       3 |       3 |
-| `server/auth/rateLimit.test.ts`       | Fenêtre, `retryAfterSeconds`, isolement par clé, balayage borné à 20 000 clés                                            |       5 |       5 |
-| `server/checks/client.test.ts`        | `performHttpCheck` et `validateResolvedAddresses` ; hook `lookup` `{all:true}` ; **réseau réel** (cf. §3)                |       9 |       9 |
-| `server/checks/content.test.ts`       | Assertion mot-clé : insensible à la casse, corps tronqué ⇒ `unknown`, binaire jamais inspecté                            |       7 |       7 |
-| `server/incidents/state.test.ts`      | Machine à états : suspect au 1ᵉʳ échec, confirmé au 3ᵉ, résolu après 2 succès                                            |       4 |       4 |
-| `server/monitors/ssrf.test.ts`        | Refus loopback/RFC1918/169.254, IPv6 tunnels/réservés, ports et protocoles non HTTP                                      |       7 |      24 |
-| `server/monitors/stats.test.ts`       | `calculateUptime` : % arrondi, moyenne, `null` sans check                                                                |       2 |       2 |
-| `server/notifications/crypto.test.ts` | Round-trip AES-256-GCM de la config Telegram                                                                             |       1 |       1 |
-| `server/plans/service.test.ts`        | Quotas/limites/gating de plan + `resolvePlan` sur `fakeDb`                                                               |      10 |      10 |
-| `server/platform.test.ts`             | Config publique sans fuite de secrets, cookies, signature JWT de session, `errorHandler` (503/500/413/400), `parseId`    |      12 |      12 |
-| `server/qa/digest.test.ts`            | Clé de période du digest : jour UTC strict, tri lexical                                                                  |       2 |       2 |
-| `server/qa/report.test.ts`            | Documents Markdown FR : rapport interne et réponse client, champs manquants, preuves, relance                            |      20 |      20 |
-| `server/qa/routes.test.ts`            | `requestOrigin` seul : `APP_BASE_URL` autoritaire, forwarded-host, injection d'en-tête refusée                           |       6 |       6 |
-| `server/qa/runs.test.ts`              | `parseDetail` : JSON corrompu ⇒ liste vide, jamais un crash                                                              |       3 |       3 |
-| `server/qa/selfTest.test.ts`          | 7 invariants auto-test : clé de période 15 min, textes FR, `stubDb`, échec de lecture = anomalie                         |      17 |      17 |
-| `server/qa/tickets.test.ts`           | Transitions d'état, token 32 hex, bornes de preuve, sérialisation publique sans fuite                                    |      13 |      13 |
-| `server/scheduler/pool.test.ts`       | `mapWithConcurrency` : ordre, plafond d'in-flight, propagation d'erreur                                                  |       5 |       5 |
-| `server/scheduler/retention.test.ts`  | Bornes `RETENTION` et calcul des cutoffs depuis une date fournie                                                         |       3 |       3 |
-| `server/statuspages/analysis.test.ts` | Maths de page publique : percentiles nearest-rank, fenêtres, buckets horaires, budget d'erreur, compte à rebours TLS     |      16 |      16 |
-| `shared/contracts.test.ts`            | Contrats zod serveur↔client : formes de réponses, défauts, rejets, table de transitions QA, parité enum↔schéma         |      42 |      42 |
-| **Total**                             |                                                                                                                          | **202** | **219** |
+| Fichier                               | Ce qu'il verrouille                                                                                                                                                 |   Blocs |   Tests |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------: | ------: |
+| `client/src/lib/qaContext.test.ts`    | Tampon de preuves client : route sans query string, captures de 10, troncature 300/60, instant injecté                                                              |       7 |       7 |
+| `server/_core/db-error.test.ts`       | Déballage des erreurs driver derrière `DrizzleQueryError` : code lu via `.cause`, doublon reconnu sur les deux formes, message jamais porteur du SQL                |       3 |       3 |
+| `server/_core/http.test.ts`           | Gardes `requireUser`/`requireAdmin` (401/403/owner, session lue 1×) et `asyncHandler` ; `vi.mock` de la session (`:3-4`)                                            |       8 |       8 |
+| `server/auth/owner.test.ts`           | Comparaison d'adresse propriétaire : casse/espaces, suffixe trompeur refusé, override `UPTIMEPULSE_OWNER_EMAIL`                                                     |       3 |       3 |
+| `server/auth/rateLimit.test.ts`       | Fenêtre, `retryAfterSeconds`, isolement par clé, balayage borné à 20 000 clés                                                                                       |       5 |       5 |
+| `server/checks/client.test.ts`        | `performHttpCheck` et `validateResolvedAddresses` ; hook `lookup` `{all:true}` ; **réseau réel** (cf. §3)                                                           |       9 |       9 |
+| `server/checks/content.test.ts`       | Assertion mot-clé : insensible à la casse, corps tronqué ⇒ `unknown`, binaire jamais inspecté                                                                       |       7 |       7 |
+| `server/incidents/state.test.ts`      | Machine à états : suspect au 1ᵉʳ échec, confirmé au 3ᵉ, résolu après 2 succès                                                                                       |       4 |       4 |
+| `server/monitors/ssrf.test.ts`        | Refus loopback/RFC1918/169.254, IPv6 tunnels/réservés, ports et protocoles non HTTP                                                                                 |       7 |      24 |
+| `server/monitors/stats.test.ts`       | `calculateUptime` : % arrondi, moyenne, `null` sans check                                                                                                           |       2 |       2 |
+| `server/notifications/crypto.test.ts` | Round-trip AES-256-GCM de la config Telegram                                                                                                                        |       1 |       1 |
+| `server/plans/service.test.ts`        | Quotas/limites/gating de plan + `resolvePlan` sur `fakeDb`                                                                                                          |      10 |      10 |
+| `server/platform.test.ts`             | Config publique sans fuite de secrets, cookies, signature JWT de session, `errorHandler` (503/500/413/400), `parseId`, déballage Drizzle → 503 sans SQL dans le log |      13 |      13 |
+| `server/qa/digest.test.ts`            | Clé de période du digest : jour UTC strict, tri lexical                                                                                                             |       2 |       2 |
+| `server/qa/report.test.ts`            | Documents Markdown FR : rapport interne et réponse client, champs manquants, preuves, relance                                                                       |      20 |      20 |
+| `server/qa/routes.test.ts`            | `requestOrigin` seul : `APP_BASE_URL` autoritaire, forwarded-host, injection d'en-tête refusée                                                                      |       6 |       6 |
+| `server/qa/runs.test.ts`              | `parseDetail` : JSON corrompu ⇒ liste vide, jamais un crash                                                                                                         |       3 |       3 |
+| `server/qa/selfTest.test.ts`          | 7 invariants auto-test : clé de période 15 min, textes FR, `stubDb`, échec de lecture = anomalie                                                                    |      17 |      17 |
+| `server/qa/tickets.test.ts`           | Transitions d'état, token 32 hex, bornes de preuve, sérialisation publique sans fuite                                                                               |      13 |      13 |
+| `server/scheduler/pool.test.ts`       | `mapWithConcurrency` : ordre, plafond d'in-flight, propagation d'erreur                                                                                             |       5 |       5 |
+| `server/scheduler/retention.test.ts`  | Bornes `RETENTION` et calcul des cutoffs depuis une date fournie                                                                                                    |       3 |       3 |
+| `server/statuspages/analysis.test.ts` | Maths de page publique : percentiles nearest-rank, fenêtres, buckets horaires, budget d'erreur, compte à rebours TLS                                                |      16 |      16 |
+| `shared/contracts.test.ts`            | Contrats zod serveur↔client : formes de réponses, défauts, rejets, table de transitions QA, parité enum↔schéma                                                    |      42 |      42 |
+| **Total**                             |                                                                                                                                                                     | **206** | **223** |
 
-Mon compte de blocs (202) et le total annoncé par le dépôt (219 à l'exécution)
-sont **réconciliables sans écart** : 202 − 4 `it.each` + 21 cas dépliés = 219,
-confirmé par `pnpm exec vitest run` (« Tests 219 passed (219) »).
+Mon compte de blocs (206) et le total annoncé par le dépôt (223 à l'exécution)
+sont **réconciliables sans écart** : 206 − 4 `it.each` + 21 cas dépliés = 223,
+confirmé par `pnpm exec vitest run` (« Tests 223 passed (223) »).
 
 ## 3. Comment le temps et le réseau sont traités
 
 ### Temps : injection, jamais simulation
 
 - Zéro occurrence de `vi.useFakeTimers`, `vi.setSystemTime` ou
-  `vi.advanceTimers` dans les 22 fichiers (grep exhaustif : 0 résultat).
+  `vi.advanceTimers` dans les 23 fichiers (grep exhaustif : 0 résultat).
 - Le temps est **passé en paramètre** par les fonctions pures, ce que les
   tests verrouillent : `consumeRateLimit(key, limit, windowMs, now)` avec
   `now = Date.now()` par défaut (`server/auth/rateLimit.ts:33-37`) et utilisé
   figé dans `server/auth/rateLimit.test.ts:22-25` ;
   `retentionCutoffs(now: Date)` (`server/scheduler/retention.ts:19`, testé
   `server/scheduler/retention.test.ts:13-14`) ; `digestPeriodKey(now)`
-  (`server/qa/digest.ts:37`) ; les checks auto-test `run(db, now)`
-  (`server/qa/selfTest.ts:65`, constante `NOW` à
+  (`server/qa/digest.ts:38`) ; les checks auto-test `run(db, now)`
+  (`server/qa/selfTest.ts:66`, constante `NOW` à
   `server/qa/selfTest.test.ts:18`) ; `serializeTicket(…, { now })`
   (`server/qa/tickets.test.ts:13,130`) ; `certificateFrom(monitor, now)`
   (`server/statuspages/analysis.test.ts:161`) ; `captureEvidence(NOW, …)`
@@ -137,12 +138,19 @@ confirmé par `pnpm exec vitest run` (« Tests 219 passed (219) »).
 ## 4. Base de données
 
 - **Aucun test n'ouvre de connexion.** grep : aucune occurrence de `mysql`,
-  `createPool` ou `getDb` dans les 22 fichiers. Le module `server/db.ts` crée
+  `createPool` ou `getDb` dans les 23 fichiers. Le module `server/db.ts` crée
   son pool **paresseusement** (`server/db.ts:13-24`), et le seul import
   concerné dans un test est de type pur, effacé à la compilation :
   `import type { Database } from "../db"` (`server/qa/selfTest.test.ts:2`).
   Les erreurs de base sont simulées par fabulation : `ECONNREFUSED` synthétique
   injecté dans `errorHandler` (`server/platform.test.ts:115-117`).
+  Point d'honnêteté mesuré : ce cas (`:103`) lançait une erreur **nue** portant
+  `.code`, exactement la forme que Drizzle 0.44 ne produit plus — elle enveloppe
+  l'échec dans un `DrizzleQueryError`, le code glissant sur `.cause` — si bien
+  que le test est resté vert pendant que le chemin de production était cassé. Le
+  cas ajouté `server/platform.test.ts:132-167` lance volontairement la forme
+  enveloppée, et `server/_core/db-error.test.ts` verrouille le déballage
+  (`driverErrorCode`, `isDuplicateKeyError`, `safeErrorMessage`).
 - **`fakeDb`** (`server/plans/service.test.ts:133-161`) : chaîne
   `select→from→where→limit` servant des lignes en tableau et un
   `update→set` qui capture les valeurs écrites (`:150-156`). Il prouve les
@@ -174,12 +182,12 @@ confirmé par `pnpm exec vitest run` (« Tests 219 passed (219) »).
   Une migration fausse peut donc passer sous les cinq portes (§6) ; seule la
   fumée conteneur CI (`ci.yml:39-53`) touche un process réel, mais **sans base
   de données** (`ci.yml` ne fournit aucun `DATABASE_URL`, et le handler fumé ne
-  consulte rien : `server/_core/index.ts:40-43`).
+  consulte rien : `server/_core/index.ts:41-44`).
 
 ## 5. Ce qui n'est testé du tout
 
-21 fichiers source sont importés (comme valeurs) par les tests :
-`_core/{http,cookies,publicConfig,sdk}`, `auth/{owner,rateLimit,session}`,
+22 fichiers source sont importés (comme valeurs) par les tests :
+`_core/{db-error,http,cookies,publicConfig,sdk}`, `auth/{owner,rateLimit,session}`,
 `checks/client`, `monitors/{ssrf,stats}`, `notifications/crypto`,
 `plans/service`, `qa/{digest,report,routes,runs,selfTest,tickets}`,
 `scheduler/{pool,retention}`, `statuspages/analysis`, `incidents/state`,
@@ -188,12 +196,13 @@ reste est jamais exécuté par `pnpm test`.
 
 ### Démarrage Express — 0 test
 
-- `server/_core/index.ts` (100 lignes) : `express()` (`:23`), middlewares JSON
-  64 kb (`:38-39`), health `/api/health` (`:40`), montage des 10 registres de
-  routes (`:50-59`), `notFoundHandler` (`:70`), `errorHandler` final (`:81`),
-  `listen` (`:90`). Aucune de ces lignes ne tourne sous vitest ; seul le
+- `server/_core/index.ts` (101 lignes) : `express()` (`:24`), middlewares JSON
+  64 kb (`:39-40`), health `/api/health` (`:41`), montage des 10 registres de
+  routes (`:51-60`), `notFoundHandler` (`:71`), `errorHandler` final (`:82`),
+  `listen` (`:91`). Aucune de ces lignes ne tourne sous vitest ; seul le
   conteneur CI touche le health (`ci.yml:43`).
-- `server/_core/vite.ts` (`setupVite:9`, `serveStatic:50`),
+- `server/_core/vite.ts` (`setupVite:7`), `server/_core/static.ts`
+  (`serveStatic:5`, extrait du `vite.ts` au refactor),
   `server/_core/context.ts` (`createContext:11`),
   `server/_core/trpc.ts` (`protectedProcedure:28`, `adminProcedure:30`),
   `server/_core/systemRouter.ts` (`:5`), `server/routers.ts` (12 lignes),
@@ -216,12 +225,12 @@ niveau route** : SSRF (`ssrf.test.ts` vs les 9 routes monitors qui l'appellent),
 uptime (`stats.test.ts` vs `monitors/routes.ts`), maths de statut
 (`analysis.test.ts` vs les 4 routes `statuspages/routes.ts` ; le test contrat
 ne fait que « miroiter » le payload, commentaire `shared/contracts.test.ts:400-403`),
-machine à incidents (`state.test.ts` vs son appelant `checks/engine.ts:25`),
+machine à incidents (`state.test.ts` vs son appelant `checks/engine.ts:26`),
 plans (`service.test.ts` vs `admin/routes.ts` + `plans/respond.ts:13`
 `respondPlanError` jamais importé), limites digest (`digest.test.ts:37` vs
-`buildDailyDigest:213`, `lastDailyDigest:333`, `maybeRunDailyDigest:377`),
-ledger (`runs.test.ts` ne teste que `parseDetail:66` ; `claimRun:16`,
-`finishRun:35`, `latestRun:51` non testés).
+`buildDailyDigest:214`, `lastDailyDigest:334`, `maybeRunDailyDigest:378`),
+ledger (`runs.test.ts` ne teste que `parseDetail:67` ; `claimRun:17`,
+`finishRun:36`, `latestRun:52` non testés).
 
 ### Ordonnanceur — fonction oui, pulsation non
 
@@ -236,9 +245,9 @@ assertion ne l'epingle).
 ### Notifications — la crypto seule
 
 Testé : `notifications/crypto.ts`. Jamais testés :
-`dispatcher.ts` (`formatMessage:28` — **non exporté, donc inatteignable en
-l'état** ; `dispatchIncidentNotification:162`,
-`retryFailedNotificationDeliveries:183`, `listNotificationDeliveries:248`),
+`dispatcher.ts` (`formatMessage:29` — **non exporté, donc inatteignable en
+l'état** ; `dispatchIncidentNotification:150`,
+`retryFailedNotificationDeliveries:171`, `listNotificationDeliveries:236`),
 `telegram.ts` (`sendTelegramMessage:7`, appel réel `api.telegram.org:14`),
 `notifications/routes.ts` (4 handlers).
 
@@ -277,7 +286,7 @@ testés nulle part.
 1. Création d'incident réelle (chemin `engine.ts` + écriture DB + enqueue
    notification) — aucune intégration.
 2. Cycle de vie notification : file, re-tentatives, doublons
-   (`isDuplicateKeyError:105`).
+   (`isDuplicateKeyError`, `server/_core/db-error.ts:26`).
 3. Auto-test de bout en bout : les 7 invariants sont testés fonction par
    fonction, mais leur exécution planifiée, la déduplication par `fingerprint`
    et l'ouverture de ticket (`tickets.ts` ne couvre pas la création côté
@@ -300,7 +309,7 @@ celui de `ci.yml:30-34`) :
 | 1   | `pnpm format:check` | `prettier --check .` (`package.json:12`)       | Dérive de formatage vs `.prettierrc` (dont `printWidth: 80`, `.prettierrc:4`)                       |
 | 2   | `pnpm lint`         | `oxlint --deny-warnings .` (`package.json:15`) | Erreurs statiques, avertissements bloquants                                                         |
 | 3   | `pnpm check`        | `tsc --noEmit` (`package.json:10`)             | Typage strict des 3 plans + configs (`tsconfig.json:2,8`) — couvre donc les fichiers **non testés** |
-| 4   | `pnpm test`         | `vitest run` (`package.json:13`)               | Les 219 tests du §2 (logique pure, contrats)                                                        |
+| 4   | `pnpm test`         | `vitest run` (`package.json:13`)               | Les 223 tests du §2 (logique pure, contrats)                                                        |
 | 5   | `pnpm build`        | `vite build && esbuild …` (`package.json:8`)   | Résolution d'imports, bundle client + serveur                                                       |
 
 Ordre logique : du moins coûteux (format) au plus coûteux (build), le type
@@ -310,7 +319,7 @@ les échecs de comportement.
 La CI ajoute quatre étapes après (`ci.yml:35-57`) : `pnpm audit --audit-level
 high` (`:36`), `docker build -t uptimepulse:ci .` (`:38`), fumée conteneur :
 `docker run` sans base ni env, 30 essais `curl /api/health` (`:39-53` ; le
-handler ne consulte rien, `server/_core/index.ts:40-43`), et gitleaks
+handler ne consulte rien, `server/_core/index.ts:41-44`), et gitleaks
 (`:54-57`). Déclenchement : PR et push sur `main`, avec annulation des runs
 périmés (`ci.yml:3-12`).
 
@@ -331,11 +340,11 @@ Lacunes **vérifiées** :
 
 ## 7. Comment ajouter un test ici
 
-Conventions réellement en vigueur (déduites des 22 fichiers) :
+Conventions réellement en vigueur (déduites des 23 fichiers) :
 
 1. **Imports explicites** : chaque fichier d'import commence par
    `import { describe, expect, it } from "vitest"` — ex.
-   `server/monitors/ssrf.test.ts:1`. Les 22 fichiers le font (vérifié par
+   `server/monitors/ssrf.test.ts:1`. Les 23 fichiers le font (vérifié par
    grep `grep -L 'from "vitest"'` : 0 manquant), obligation dictée par
    `tsconfig.json:18` dont `types` liste `["node", "vite/client"]` sans
    `vitest/globals`.

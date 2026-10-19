@@ -37,10 +37,10 @@ schémas, formes de payload) vivent dans `shared/contracts.ts` afin que
 l’interface ne puisse pas diverger du serveur. Elles ne couvrent pas tout, et le
 savoir évite de chercher un symbole au mauvais endroit : `BATCH_SIZE` et la
 concurrence des checks sont dans `server/scheduler/tick.ts`, le bail de claim
-est un littéral en ligne dans `server/checks/engine.ts:96`, le plafond
+est un littéral en ligne dans `server/checks/engine.ts:97`, le plafond
 d’échantillonnage de latence est `LATENCY_SAMPLE_CAP_PER_MONITOR` dans
 `server/statuspages/analysis.ts:36-39`, et la fenêtre du digest
-(`WINDOW_HOURS`) dans `server/qa/digest.ts:29`. Une constante purement serveur
+(`WINDOW_HOURS`) dans `server/qa/digest.ts:30`. Une constante purement serveur
 n’a rien à faire dans le contrat partagé.
 
 ## Migrations
@@ -63,10 +63,18 @@ validation SSRF, calculs d’uptime, pool de concurrence, rate limiting, contrat
 partagés. Ajouter un test pour toute nouvelle règle de décision, et vérifier
 ce qui est observable plutôt que l’implémentation.
 
-État mesuré : **22 fichiers, 219 tests** (`pnpm test`, durée ~3,4 s). Aucun
+État mesuré : **23 fichiers, 223 tests** (`pnpm test`, durée ~3,4 s). Aucun
 fichier ne se connecte à la base — le CI n’a pas de service MySQL, donc rien de
 ce vert ne valide les migrations ni le SQL généré. La limite est détaillée dans
 `docs/06-verification/tests-et-couverture.md`.
+
+Un objet d’erreur construit à la main dans un test doit reproduire la forme que
+le code reçoit vraiment. Drizzle 0.44 enveloppe chaque échec d’instruction dans
+un `DrizzleQueryError` : le code du pilote est sur `.cause`, le message est le
+texte SQL avec ses valeurs liées. Un test qui jette un `Error` portant `.code`
+au premier niveau reste vert pendant que la production échoue — c’est exactement
+ainsi que la détection des doublons et le `503 DATABASE_UNAVAILABLE` sont restés
+inactifs.
 
 ## Données et secrets
 
