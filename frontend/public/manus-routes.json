@@ -1,0 +1,10 @@
+{
+  "routes": [
+    { "path": "/", "title": "Dashboard" },
+    { "path": "/login", "title": "Connexion" },
+    { "path": "/register", "title": "Créer un compte" },
+    { "path": "/monitors/:id", "title": "Détail du monitor" },
+    { "path": "/settings", "title": "Paramètres" },
+    { "path": "/404", "title": "Page introuvable" }
+  ]
+}

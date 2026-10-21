@@ -1,0 +1,674 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans:
+    "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display:
+    "Space Grotesk", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /*
+   * Light-first semantic tokens. Dark mode becomes a conscious opt-in via .dark
+   * on the operator routes (dashboard, console, settings).
+   */
+  --color-page: var(--page-bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-glow: var(--brand-glow);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-muted: var(--brand-muted);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-violet: var(--accent-violet);
+  --color-accent-emerald: var(--accent-emerald);
+  --color-state-up: var(--state-up);
+  --color-state-down: var(--state-down);
+  --color-state-warn: var(--state-warn);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-medium: var(--shadow-medium);
+  --shadow-strong: var(--shadow-strong);
+  --shadow-glow: var(--shadow-glow);
+  --shadow-glow-violet: var(--shadow-glow-violet);
+  --shadow-glow-emerald: var(--shadow-glow-emerald);
+}
+
+/*
+ * Light-first design system. Dark mode is opt-in via .dark on operator routes
+ * (dashboard, console, settings, QA). The marketing & public pages stay light.
+ */
+:root {
+  color-scheme: light;
+  /*
+   * Warm monochrome base, inspired by the reference: a cream page, off-white
+   * surfaces and a single vermillion accent used sparingly. Ink on cream reads
+   * at ~16:1, comfortably past AA for every text size on the marketing routes.
+   */
+  --page-bg: #f4f3ee;
+  --surface: #fbfaf7;
+  --surface-2: #edece5;
+  --surface-3: #e4e2d9;
+  /* Typography */
+  --ink: #141414;
+  --ink-soft: #4b4b4b;
+  /* Measured, not eyeballed: #7a7873 fell to 3.97:1 on the cream page, below
+     AA for small text. This clears 4.87:1 on --page-bg and 4.58:1 on
+     --surface-2, the two darkest grounds this token is ever laid on. */
+  --ink-muted: #6b6a66;
+  /* Lines & borders */
+  --line: #e3e1d8;
+  --line-strong: #cfccc1;
+  /* Brand: near-black for primary actions, vermillion for the accent glow */
+  --brand: #141414;
+  --brand-strong: #000000;
+  --brand-glow: #e8503a;
+  --brand-subtle: #e8503a1a;
+  --brand-muted: #f6ebe7;
+  /* Accent colors for variety */
+  --accent-blue: #e8503a;
+  --accent-violet: #e8503a;
+  --accent-emerald: #10b981;
+  /* State colors */
+  --state-up: #047857;
+  --state-down: #e8503a;
+  --state-warn: #b45309;
+  /* Logo tile: ink tile with a vermillion pulse on light, inverted on dark */
+  --logo-tile: #141414;
+  --logo-mark: #e8503a;
+  /* Shadows - layered, soft, premium */
+  --shadow-soft:
+    0 1px 2px 0 rgb(20 20 20 / 0.04), 0 1px 3px 0 rgb(20 20 20 / 0.06);
+  --shadow-medium:
+    0 4px 6px -1px rgb(20 20 20 / 0.06), 0 2px 4px -2px rgb(20 20 20 / 0.06);
+  --shadow-strong:
+    0 12px 24px -6px rgb(20 20 20 / 0.1), 0 4px 8px -4px rgb(20 20 20 / 0.06);
+  --shadow-glow:
+    0 0 0 1px rgb(20 20 20 / 0.06), 0 12px 32px -12px rgb(20 20 20 / 0.22);
+  --shadow-glow-violet:
+    0 0 0 1px rgb(232 80 58 / 0.16), 0 12px 32px -12px rgb(232 80 58 / 0.3);
+  --shadow-glow-emerald:
+    0 0 0 1px rgb(16 185 129 / 0.14), 0 12px 32px -12px rgb(16 185 129 / 0.24);
+  /* Radius & base */
+  --radius: 0.75rem;
+  --background: #f4f3ee;
+  --foreground: #141414;
+  --card: #fbfaf7;
+  --card-foreground: #141414;
+  --popover: #fbfaf7;
+  --popover-foreground: #141414;
+  --secondary: #edece5;
+  --secondary-foreground: #1f1f1f;
+  --muted: #edece5;
+  --muted-foreground: #7a7873;
+  --accent: #e8503a1a;
+  --accent-foreground: #b8321f;
+  --destructive: #e8503a;
+  --destructive-foreground: #fff7f5;
+  --border: #e3e1d8;
+  --input: #d8d5ca;
+  --ring: #141414;
+}
+
+.dark {
+  color-scheme: dark;
+  --page-bg: #0b1220;
+  --surface: #0e192c;
+  --surface-2: #12203a;
+  --surface-3: #162640;
+  --ink: #f1f5f9;
+  --ink-soft: #cbd5e1;
+  --ink-muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --brand: #60a5fa;
+  --brand-strong: #93c5fd;
+  --brand-glow: #3b82f6;
+  --brand-subtle: #1e3a5f;
+  --brand-muted: #0f243e;
+  --accent-blue: #60a5fa;
+  --accent-violet: #818cf8;
+  --accent-emerald: #34d399;
+  --state-up: #34d399;
+  --state-down: #f87171;
+  --state-warn: #fbbf24;
+  --logo-tile: #f1f5f9;
+  --logo-mark: #3b82f6;
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --shadow-medium:
+    0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-strong:
+    0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-glow:
+    0 0 0 1px rgb(96 165 250 / 0.15), 0 8px 30px -8px rgb(96 165 250 / 0.25);
+  --shadow-glow-violet:
+    0 0 0 1px rgb(129 140 248 / 0.15), 0 8px 30px -8px rgb(129 140 248 / 0.3);
+  --shadow-glow-emerald:
+    0 0 0 1px rgb(52 211 153 / 0.15), 0 8px 30px -8px rgb(52 211 153 / 0.25);
+  --primary: #60a5fa;
+  --primary-foreground: #07111d;
+  --background: #0b1220;
+  --foreground: #f1f5f9;
+  --card: #0e192c;
+  --card-foreground: #f1f5f9;
+  --popover: #15233a;
+  --popover-foreground: #f1f5f9;
+  --secondary: #12203a;
+  --secondary-foreground: #cbd5e1;
+  --muted: #162640;
+  --muted-foreground: #94a3b8;
+  --accent: #1e3a5f;
+  --accent-foreground: #93c5fd;
+  --destructive: #f87171;
+  --destructive-foreground: #fef2f2;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #60a5fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--page-bg);
+  scroll-behavior: smooth;
+  /* Anchor targets must clear the sticky 4rem header, WCAG 2.2 SC 2.4.11. */
+  scroll-padding-top: 5rem;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+::selection {
+  background: color-mix(in oklab, var(--brand) 22%, transparent);
+}
+
+/* ==========================================================================
+   Light-first Form Inputs
+   ========================================================================== */
+.field-input {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--input);
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+.field-input::placeholder {
+  color: var(--ink-muted);
+}
+.field-input:hover {
+  border-color: var(--brand);
+  background: var(--surface);
+}
+.field-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
+}
+
+/* Auth fields — light-first, warm surface on the cream page */
+.auth-input {
+  width: 100%;
+  border-radius: 0.875rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  outline: none;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+.auth-input::placeholder {
+  color: var(--ink-muted);
+}
+.auth-input:hover {
+  border-color: var(--line-strong);
+  background: #ffffff;
+}
+.auth-input:focus {
+  border-color: var(--brand);
+  background: #ffffff;
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--brand) 14%, transparent),
+    var(--shadow-soft);
+}
+
+/* Dark-mode variant for operator dialogs (auth, modals in dark shell) */
+.dark .auth-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(5, 12, 25, 0.45);
+  padding: 0.75rem 0.875rem;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  outline: none;
+}
+.dark .auth-input::placeholder {
+  color: #475569;
+}
+.dark .auth-input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.dark .auth-input:focus {
+  border-color: rgba(84, 214, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(84, 214, 255, 0.1);
+}
+
+/* ==========================================================================
+   Premium Shadow & Elevation Utilities
+   ========================================================================== */
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+.shadow-medium {
+  box-shadow: var(--shadow-medium);
+}
+.shadow-strong {
+  box-shadow: var(--shadow-strong);
+}
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+.shadow-glow-violet {
+  box-shadow: var(--shadow-glow-violet);
+}
+.shadow-glow-emerald {
+  box-shadow: var(--shadow-glow-emerald);
+}
+
+/* ==========================================================================
+   Dot-matrix headline (reference: bitmap hero lettering, CSS-only)
+   The text is masked by a dot grid. Fallback: plain ink where the clip is
+   unsupported, so the headline never disappears.
+   ========================================================================== */
+.dotmatrix {
+  color: var(--ink);
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .dotmatrix {
+    background-image: radial-gradient(
+      circle at center,
+      var(--ink) 1.15px,
+      transparent 1.4px
+    );
+    background-size: 5px 5px;
+    background-position: 0 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Outlined display word: a hollow counterweight to solid ink in the same line.
+   Fallback keeps the word readable where text-stroke is unsupported. */
+.hollow-ink {
+  color: var(--ink-muted);
+}
+@supports (-webkit-text-stroke: 1px currentColor) {
+  .hollow-ink {
+    color: transparent;
+    -webkit-text-stroke: var(--hollow-stroke-width, 1.4px)
+      var(--hollow-stroke, var(--ink));
+  }
+}
+
+/* ==========================================================================
+   Hero card deck — dimensional layering, CSS depth only (no WebGL, no lib)
+   The fan lives in custom properties so React never re-renders on hover:
+   --dx/--dy place a card, --dz/--ry give it depth and tilt, --sc lifts it.
+   Below 64rem the cards sit in a 2-column grid and only --sc applies, so the
+   tap-to-lift interaction still reads on a phone.
+   ========================================================================== */
+.deck-scene {
+  perspective: 1400px;
+}
+.deck-card {
+  --dx: 0px;
+  --dy: 0px;
+  --dz: 0px;
+  --ry: 0deg;
+  --sc: 1;
+  transform: scale(var(--sc));
+  transform-style: preserve-3d;
+  transition:
+    transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 420ms ease;
+  will-change: transform;
+}
+/*
+ * Grid tracks place the cards at every width, so the fan never hides content
+ * behind a neighbour: the custom properties only add depth and tilt on top of
+ * the track position. translate(-50%,-50%) would pull each card back to its own
+ * cell centre, which is exactly where the grid already put it.
+ */
+@media (min-width: 48rem) {
+  .deck-card {
+    transform: translate3d(var(--dx), var(--dy), var(--dz)) rotateY(var(--ry))
+      scale(var(--sc));
+  }
+}
+@keyframes deck-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0);
+  }
+}
+/* Applied on an inner wrapper: the card itself owns the fan transform. */
+.deck-float {
+  animation: deck-float 7.5s ease-in-out infinite;
+}
+.shadow-deck {
+  box-shadow:
+    0 1px 0 0 rgb(20 20 20 / 0.04),
+    0 24px 48px -20px rgb(20 20 20 / 0.22),
+    0 8px 16px -12px rgb(20 20 20 / 0.14);
+}
+
+/* Technical graph-paper grid used behind the hero */
+.grid-paper {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--line) 70%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--line) 70%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 56px 56px;
+  mask-image: radial-gradient(
+    ellipse 90% 75% at 50% 35%,
+    #000 35%,
+    transparent 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 90% 75% at 50% 35%,
+    #000 35%,
+    transparent 78%
+  );
+}
+
+/* Halftone dot field that fades out — section accent from the reference */
+.halftone {
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--ink) 55%, transparent) 1.3px,
+    transparent 1.6px
+  );
+  background-size: 13px 13px;
+  mask-image: linear-gradient(105deg, transparent 12%, #000 95%);
+  -webkit-mask-image: linear-gradient(105deg, transparent 12%, #000 95%);
+}
+
+/* Circuit connector lines for the hero diagram */
+.circuit-line {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+  fill: none;
+}
+@keyframes wire-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wire {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   Live Indicator & Pulse
+   ========================================================================== */
+@keyframes live-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.live-ping {
+  animation: live-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ==========================================================================
+   Sheen / Shimmer Sweep
+   ========================================================================== */
+/* Entrance for above-the-fold content, staggered with an inline delay. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise-in 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+/* Dashed connector between the three steps of "how it works". */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.dash-flow {
+  stroke-dasharray: 6 6;
+  animation: dash-flow 1.6s linear infinite;
+}
+
+/* Dwell indicator for the auto-advancing reader rail. Duration is set inline so
+   the bar always matches the interval the JS actually uses. */
+@keyframes rail-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.rail-progress {
+  transform-origin: left;
+  animation: rail-fill linear forwards;
+}
+
+@keyframes sheen {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+  }
+  55%,
+  100% {
+    transform: translateX(220%) skewX(-12deg);
+  }
+}
+.animate-sheen {
+  animation: sheen 4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   ECG / Heartbeat Line
+   ========================================================================== */
+@keyframes ecg-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.ecg-line {
+  stroke-dasharray: 640;
+  stroke-dashoffset: 640;
+  animation: ecg-draw 2.6s ease-out 0.3s forwards;
+}
+
+/* ==========================================================================
+   Bar / Segment Growth
+   ========================================================================== */
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.uptime-bar {
+  transform-origin: bottom;
+  animation: bar-grow 0.45s ease-out backwards;
+}
+
+@keyframes segment-grow {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+.analysis-segment {
+  transform-origin: left;
+  transition: width 0.5s ease-out;
+  animation: segment-grow 0.6s ease-out backwards;
+}
+
+/* ==========================================================================
+   Spotlight / Radial Glow Following Pointer
+   ========================================================================== */
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    24rem circle at var(--mx, 50%) var(--my, 0%),
+    color-mix(in oklab, var(--brand) 12%, transparent),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+.spotlight:hover::before,
+.spotlight:focus-within::before {
+  opacity: 1;
+}
+
+.tilt-frame {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transition: transform 260ms ease-out;
+  will-change: transform;
+}
+
+/* ==========================================================================
+   Reduced Motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .tilt-frame {
+    transform: none !important;
+  }
+  .spotlight::before {
+    display: none;
+  }
+}
