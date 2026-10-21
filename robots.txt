@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /qa/
+Disallow: /support/
+Disallow: /console
+
+# Sitemap
+Sitemap: https://uptilmepulsev2.vercel.app/sitemap.xml
+
+# Rate limit for good bots
+Crawl-delay: 10

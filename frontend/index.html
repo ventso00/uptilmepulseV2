@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <meta name="theme-color" content="#F4F3EE" />
+
+    <!-- Balises SEO -->
+    <meta
+      name="description"
+      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique (DNS, TCP, TLS, certificats), historique, incidents 3/2, notifications Telegram, pages de statut publiques, tableaux de bord et paliers freemium."
+    />
+    <meta
+      name="keywords"
+      content="uptime monitoring, site monitoring, api monitoring, surveillance site web, monitoring de disponibilité, vérification HTTP, alertes telegram, page de statut, observabilité, paliers freemium"
+    />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:title" content="UptimePulse — Surveillance de sites et APIs" />
+    <meta
+      property="og:description"
+      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique (DNS, TCP, TLS, certificats), historique, incidents 3/2, notifications Telegram, pages de statut publiques."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://uptilmepulsev2.vercel.app" />
+    <meta property="og:image" content="https://uptilmepulsev2.vercel.app/favicon.svg" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="UptimePulse" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="UptimePulse — Surveillance de sites et APIs" />
+    <meta
+      name="twitter:description"
+      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique, notifications Telegram, pages de statut publiques."
+    />
+    <meta name="twitter:image" content="https://uptilmepulsev2.vercel.app/favicon.svg" />
+    <meta name="twitter:creator" content="@ventso00" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>UptimePulse — Signal clair sur vos services</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <noscript>
+      UptimePulse a besoin de JavaScript pour afficher vos monitors.
+    </noscript>
+    <script defer src="/api/platform/config.js"></script>
+    <!-- Google Analytics / Google Search Console -->
+    <!-- Remplacez GA_MEASUREMENT_ID par votre identifiant de compte -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script> -->
+    <!-- <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'GA_MEASUREMENT_ID');
+    </script> -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

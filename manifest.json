@@ -1,0 +1,15 @@
+{
+  "short_name": "UptimePulse",
+  "name": "UptimePulse — Surveillance de sites et APIs",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#F4F3EE",
+  "background_color": "#F4F3EE"
+}
