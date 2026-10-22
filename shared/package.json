@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Zod contracts, shared constants and the Drizzle schema used by both planes.",
   "dependencies": {
-    "drizzle-orm": "^0.44.5",
+    "drizzle-orm": "^0.45.4",
     "zod": "^4.1.12"
   }
 }
