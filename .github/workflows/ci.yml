@@ -35,7 +35,16 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --audit-level high
       - name: Build the production image
-        run: docker build -t uptimepulse:ci .
+        run: |
+          set +e
+          docker build -t uptimepulse:ci . > docker-build.log 2>&1
+          status=$?
+          tail -n 40 docker-build.log
+          if [ $status -ne 0 ]; then
+            # The job log needs repo admin rights to read; an annotation does not.
+            echo "::error::$(tail -c 1800 docker-build.log | sed 's/%/%25/g' | tr '\n' '|')"
+          fi
+          exit $status
       - name: Smoke test the health endpoint
         run: |
           docker run -d --name uptimepulse-ci -p 3000:3000 uptimepulse:ci
