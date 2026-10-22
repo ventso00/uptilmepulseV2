@@ -379,9 +379,7 @@ export default function Settings() {
             {statusPage && (
               <div className="mb-6 flex flex-col justify-between gap-3 rounded-xl border border-state-up/25 bg-state-up/[0.06] p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink">
-                    Page en ligne
-                  </p>
+                  <p className="text-sm font-medium text-ink">Page en ligne</p>
                   <a
                     href={`/status/${statusPage.slug}`}
                     target="_blank"
@@ -513,9 +511,7 @@ export default function Settings() {
               aria-hidden="true"
             />
             <div>
-              <h2 className="font-semibold text-ink">
-                Règle de notification
-              </h2>
+              <h2 className="font-semibold text-ink">Règle de notification</h2>
               <p className="mt-2 text-sm leading-6 text-ink-muted">
                 Un incident n’est confirmé qu’après{" "}
                 {INCIDENT_RULES.failureThreshold} échecs consécutifs. Le

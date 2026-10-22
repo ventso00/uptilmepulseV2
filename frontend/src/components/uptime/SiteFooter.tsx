@@ -71,8 +71,7 @@ function EntryProbe() {
         // A 200 alone proves the process answers; the payload says whether it
         // can actually store anything.
         const body = (await response.json()) as { database?: string };
-        if (alive)
-          setProbe(body.database === "ready" ? "up" : "degraded");
+        if (alive) setProbe(body.database === "ready" ? "up" : "degraded");
       })
       .catch(() => {
         if (alive) setProbe("down");

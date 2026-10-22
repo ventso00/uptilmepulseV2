@@ -109,11 +109,14 @@ export function HeroProbe() {
                   aria-hidden="true"
                 />
               )}
-              <span className={result.isUp ? "text-state-up" : "text-state-down"}>
+              <span
+                className={result.isUp ? "text-state-up" : "text-state-down"}
+              >
                 {result.isUp ? "Répond" : "Ne répond pas"}
               </span>
               <span className="metric font-mono text-xs text-ink-soft">
-                {result.statusCode ?? "—"} · {milliseconds(result.responseTimeMs)}
+                {result.statusCode ?? "—"} ·{" "}
+                {milliseconds(result.responseTimeMs)}
               </span>
             </p>
 
@@ -144,7 +147,8 @@ export function HeroProbe() {
 
             {!result.isUp && (result.errorMessage || result.classification) && (
               <p className="mt-3 text-xs text-ink-soft">
-                Erreur mesurée&nbsp;: {result.errorMessage ?? result.classification}
+                Erreur mesurée&nbsp;:{" "}
+                {result.errorMessage ?? result.classification}
               </p>
             )}
           </div>

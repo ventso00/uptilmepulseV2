@@ -45,14 +45,16 @@ describe("limitProbes", () => {
 
   it("refuses the ninth probe from the same address with 429", () => {
     const res = fakeResponse();
-    for (let attempt = 0; attempt < 8; attempt += 1) probeFrom("203.0.113.7", res);
+    for (let attempt = 0; attempt < 8; attempt += 1)
+      probeFrom("203.0.113.7", res);
     expect(probeFrom("203.0.113.7", res)).toBe(false);
     expect(res.statuses).toEqual([429]);
   });
 
   it("keeps one visitor's budget separate from another's", () => {
     const res = fakeResponse();
-    for (let attempt = 0; attempt < 8; attempt += 1) probeFrom("203.0.113.7", res);
+    for (let attempt = 0; attempt < 8; attempt += 1)
+      probeFrom("203.0.113.7", res);
     expect(probeFrom("198.51.100.4", res)).toBe(true);
     expect(res.statuses).toEqual([]);
   });

@@ -40,7 +40,10 @@ export async function createApp(
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use((_req, res, next) => {
-    res.setHeader("X-Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    res.setHeader(
+      "X-Content-Security-Policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    );
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader(
@@ -53,26 +56,29 @@ export async function createApp(
   // previous 50mb limit was a free denial-of-service surface.
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ limit: "64kb", extended: true }));
-  app.get("/api/health", asyncHandler(async (_req, res) => {
-    // A round-trip, not a `DATABASE_URL is set` check: a pool is created
-    // lazily, so an unusable DSN still yields a client object. Without this
-    // probe the app answered "ok" while every write route returned 503.
-    const db = await getDb();
-    let database: "ready" | "unreachable" | "unconfigured" = "unconfigured";
-    if (db) {
-      try {
-        await db.execute(sql`select 1`);
-        database = "ready";
-      } catch {
-        database = "unreachable";
+  app.get(
+    "/api/health",
+    asyncHandler(async (_req, res) => {
+      // A round-trip, not a `DATABASE_URL is set` check: a pool is created
+      // lazily, so an unusable DSN still yields a client object. Without this
+      // probe the app answered "ok" while every write route returned 503.
+      const db = await getDb();
+      let database: "ready" | "unreachable" | "unconfigured" = "unconfigured";
+      if (db) {
+        try {
+          await db.execute(sql`select 1`);
+          database = "ready";
+        } catch {
+          database = "unreachable";
+        }
       }
-    }
-    res.set("Cache-Control", "no-store");
-    return res.json({
-      status: database === "ready" ? "ok" : "degraded",
-      database,
-    });
-  }));
+      res.set("Cache-Control", "no-store");
+      return res.json({
+        status: database === "ready" ? "ok" : "degraded",
+        database,
+      });
+    })
+  );
   app.get("/api/platform/config.js", (_req, res) => {
     res
       .set("Cache-Control", "no-store")

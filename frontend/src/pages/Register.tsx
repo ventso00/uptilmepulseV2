@@ -82,7 +82,9 @@ export default function Register() {
               type="button"
               onClick={() => setShow(!show)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted transition hover:text-ink"
-              aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              aria-label={
+                show ? "Masquer le mot de passe" : "Afficher le mot de passe"
+              }
             >
               {show ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -146,8 +148,8 @@ export default function Register() {
             className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-glow"
             aria-hidden="true"
           />
-          Un seul accès d'exploitation, le vôtre. Vos clients n'auront jamais
-          de compte à créer.
+          Un seul accès d'exploitation, le vôtre. Vos clients n'auront jamais de
+          compte à créer.
         </p>
       </form>
 

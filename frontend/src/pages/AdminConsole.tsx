@@ -191,9 +191,7 @@ export default function AdminConsole() {
                     key={row.slug}
                     className="grid grid-cols-2 gap-3 px-5 py-3 text-xs text-ink-muted sm:grid-cols-5"
                   >
-                    <span className="font-medium text-ink">
-                      {row.name}
-                    </span>
+                    <span className="font-medium text-ink">{row.name}</span>
                     <span>{row.slug}</span>
                     <span>
                       {(row.priceCents / 100).toLocaleString("fr-FR")} €

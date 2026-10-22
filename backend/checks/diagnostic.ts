@@ -13,13 +13,15 @@ const PROBE_TIMEOUT_MS = 10_000;
  * have no session yet.
  */
 export function limitProbes(req: Request, res: Response): boolean {
-  const rate = consumeRateLimit(
-    `diagnostic:${req.ip ?? "unknown"}`,
-    8,
-    60_000
-  );
+  const rate = consumeRateLimit(`diagnostic:${req.ip ?? "unknown"}`, 8, 60_000);
   if (rate.allowed) return true;
-  sendError(res, 429, "RATE_LIMITED", "Too many requests", rate.retryAfterSeconds);
+  sendError(
+    res,
+    429,
+    "RATE_LIMITED",
+    "Too many requests",
+    rate.retryAfterSeconds
+  );
   return false;
 }
 
@@ -28,7 +30,8 @@ export function registerDiagnosticRoute(app: Express): void {
     "/api/diagnostic",
     asyncHandler(async (req: Request, res: Response) => {
       if (!limitProbes(req, res)) return;
-      const rawUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+      const rawUrl =
+        typeof req.body?.url === "string" ? req.body.url.trim() : "";
       let target: URL;
       try {
         target = validateUrlSyntax(rawUrl);
