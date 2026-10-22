@@ -1,0 +1,16 @@
+# Les fixtures des tests QA portent un jeton de 32 caractères hexadécimaux
+# volontairement synthétique. Le scanner de secrets ne peut pas le savoir, et
+# ces blobs sont déjà dans l'historique (76b2664f, 979ed3a4) : ils n'en
+# sortiront pas sans réécrire main, ce que la CI ne doit pas imposer.
+#
+# Le stopword est choisi au cordeau : il ne masque que cette séquence
+# d'horloge. Un vrai jeton aléatoire ne la contient pas et reste détecté.
+# Sans [extend], un fichier personnalisé REMPLACE les règles par défaut :
+# le scan ne trouverait plus rien, ce qui n'est pas une correction mais une
+# désactivation. Les règles restent donc celles de gitleaks.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "jetons de test QA, séquences 0123456789abcdef répétées"
+stopwords = ["0123456789abcdef"]
