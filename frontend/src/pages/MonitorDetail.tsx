@@ -293,6 +293,9 @@ export default function MonitorDetail() {
               {chartData.length > 0 ? (
                 <figure
                   role="img"
+                  // ResponsiveContainer resolves height:100% against this box;
+                  // without a definite height the chart collapses to 0.
+                  className="h-full"
                   aria-label={`Temps de réponse sur ${chartData.length} checks, de ${Math.min(
                     ...chartData.map(point => point.response as number)
                   )} à ${Math.max(
