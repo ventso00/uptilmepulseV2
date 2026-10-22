@@ -5,7 +5,13 @@ import ipaddr from "ipaddr.js";
 export class TargetValidationError extends Error {
   constructor(
     public readonly code: "INVALID_TARGET" | "BLOCKED_TARGET",
-    message: string
+    message: string,
+    /**
+     * True when the URL is well-formed but its hostname no longer resolves.
+     * A monitor created weeks ago can outlive its own DNS record: that is an
+     * outage to report, not a typo to refuse.
+     */
+    public readonly resolutionFailed = false
   ) {
     super(message);
     this.name = "TargetValidationError";
@@ -103,7 +109,11 @@ export function validateUrlSyntax(rawUrl: string): URL {
 
 export function validateResolvedAddresses(addresses: string[]): void {
   if (addresses.length === 0) {
-    throw new TargetValidationError("INVALID_TARGET", "Target did not resolve");
+    throw new TargetValidationError(
+      "INVALID_TARGET",
+      "Target did not resolve",
+      true
+    );
   }
   for (const address of addresses) {
     if (isBlockedIp(address)) {
@@ -126,7 +136,8 @@ export async function resolveAndValidateTarget(rawUrl: string): Promise<URL> {
   } catch {
     throw new TargetValidationError(
       "INVALID_TARGET",
-      "Target DNS lookup failed"
+      "Target DNS lookup failed",
+      true
     );
   }
   validateResolvedAddresses(records.map(record => record.address));

@@ -122,7 +122,8 @@ function classifyHttpStatus(statusCode: number): CheckClassification {
 }
 
 function errorClassification(error: unknown): CheckClassification {
-  if (error instanceof TargetValidationError) return error.code;
+  if (error instanceof TargetValidationError)
+    return error.resolutionFailed ? "DOWN_DNS" : error.code;
   const code =
     typeof error === "object" && error && "code" in error
       ? String(error.code)

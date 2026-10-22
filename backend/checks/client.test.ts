@@ -1,7 +1,10 @@
 import { describe, expect, it, afterEach } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { validateResolvedAddresses } from "../monitors/ssrf";
+import {
+  TargetValidationError,
+  validateResolvedAddresses,
+} from "../monitors/ssrf";
 import { performHttpCheck } from "./client";
 
 /**
@@ -39,6 +42,17 @@ async function startServer(
 describe("validateResolvedAddresses", () => {
   it("rejects an empty resolution", () => {
     expect(() => validateResolvedAddresses([])).toThrow();
+  });
+
+  it("flags an empty resolution as a failed lookup, not a bad URL", () => {
+    let error: unknown;
+    try {
+      validateResolvedAddresses([]);
+    } catch (cause) {
+      error = cause;
+    }
+    expect(error).toBeInstanceOf(TargetValidationError);
+    expect((error as TargetValidationError).resolutionFailed).toBe(true);
   });
 
   it("rejects private and loopback results", () => {
@@ -109,22 +123,23 @@ describe("performHttpCheck", () => {
     );
   });
 
-  it("refuses a host that does not resolve, without throwing", async () => {
+  it("reports a host that stopped resolving as a DNS outage", async () => {
     const result = await performHttpCheck(
       "https://uptimepulse-nonexistent-host.invalid",
       5000
     );
     // resolveAndValidateTarget rejects the target during the pre-flight DNS
-    // check, so the failure is surfaced as an invalid target rather than a
-    // socket-level DNS error.
+    // check. The URL itself is valid, so this must read as a DNS failure: a
+    // monitor can outlive its own domain, and "invalid target" would blame the
+    // operator for the site's outage.
     expect(result.isUp).toBe(false);
-    expect(result.classification).toBe("INVALID_TARGET");
+    expect(result.classification).toBe("DOWN_DNS");
     expect(result.statusCode).toBeNull();
     expect(result.phases).toBeNull();
     expect(result.certificate).toBeNull();
   }, 20_000);
 
-  it("rejects a non-HTTP protocol before any socket is opened", async () => {
+  it("still blames the URL when the URL itself is the problem", async () => {
     const result = await performHttpCheck("file:///etc/passwd", 5000);
     expect(result.isUp).toBe(false);
     expect(result.classification).toBe("INVALID_TARGET");

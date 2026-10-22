@@ -1,7 +1,7 @@
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { FormEvent, useState } from "react";
-import { api, errorMessage } from "@/lib/api";
+import { api, ApiError, errorMessage } from "@/lib/api";
 import { AuthLayout } from "./Login";
 
 export default function Register() {
@@ -23,7 +23,19 @@ export default function Register() {
       await api.register({ email, password });
       navigate("/dashboard");
     } catch (err) {
-      setError(errorMessage(err, "Création impossible"));
+      // The two refusals an operator can actually act on. Both are
+      // deployment-configuration facts, not mistakes in the form, so they must
+      // not be flattened into "Création impossible".
+      const code = err instanceof ApiError ? err.code : undefined;
+      if (code === "DATABASE_UNAVAILABLE")
+        setError(
+          "Aucune base de données n’est connectée à ce déploiement. Le compte ne pourra être créé qu’après avoir défini DATABASE_URL côté serveur."
+        );
+      else if (code === "REGISTRATION_CLOSED")
+        setError(
+          "Cette adresse n’est pas celle du créateur configuré sur ce déploiement. Elle se règle avec la variable UPTIMEPULSE_OWNER_EMAIL côté serveur."
+        );
+      else setError(errorMessage(err, "Création impossible"));
     } finally {
       setPending(false);
     }

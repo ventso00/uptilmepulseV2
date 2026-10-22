@@ -54,7 +54,7 @@ const columns: Array<{
   },
 ];
 
-type Probe = "checking" | "up" | "down";
+type Probe = "checking" | "up" | "degraded" | "down";
 
 function EntryProbe() {
   const [probe, setProbe] = useState<Probe>("checking");
@@ -63,8 +63,16 @@ function EntryProbe() {
     const controller = new AbortController();
     let alive = true;
     fetch("/api/health", { signal: controller.signal })
-      .then(response => {
-        if (alive) setProbe(response.ok ? "up" : "down");
+      .then(async response => {
+        if (!response.ok) {
+          if (alive) setProbe("down");
+          return;
+        }
+        // A 200 alone proves the process answers; the payload says whether it
+        // can actually store anything.
+        const body = (await response.json()) as { database?: string };
+        if (alive)
+          setProbe(body.database === "ready" ? "up" : "degraded");
       })
       .catch(() => {
         if (alive) setProbe("down");
@@ -78,9 +86,11 @@ function EntryProbe() {
   const label =
     probe === "up"
       ? "Point d’entrée : opérationnel"
-      : probe === "down"
-        ? "Point d’entrée injoignable"
-        : "Sonde du point d’entrée…";
+      : probe === "degraded"
+        ? "Point d’entrée : sans base de données"
+        : probe === "down"
+          ? "Point d’entrée injoignable"
+          : "Sonde du point d’entrée…";
 
   return (
     <div className="mt-6">
@@ -88,12 +98,19 @@ function EntryProbe() {
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] ${
           probe === "down"
             ? "border-state-down/40 bg-state-down/10 text-page"
-            : "border-page/15 bg-page/5 text-page/80"
+            : probe === "degraded"
+              ? "border-state-warn/40 bg-state-warn/10 text-page"
+              : "border-page/15 bg-page/5 text-page/80"
         }`}
       >
         {probe === "down" ? (
           <TriangleAlert
             className="h-3.5 w-3.5 shrink-0 text-state-down"
+            aria-hidden="true"
+          />
+        ) : probe === "degraded" ? (
+          <TriangleAlert
+            className="h-3.5 w-3.5 shrink-0 text-state-warn"
             aria-hidden="true"
           />
         ) : (
