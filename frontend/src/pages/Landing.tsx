@@ -22,6 +22,7 @@ import { CountUp } from "@/components/uptime/CountUp";
 import { ProductPreview } from "@/components/uptime/ProductPreview";
 import { HeroCircuit } from "@/components/uptime/HeroCircuit";
 import { HeroDeck } from "@/components/uptime/HeroDeck";
+import { HeroProbe } from "@/components/uptime/HeroProbe";
 import { Reveal } from "@/components/uptime/Reveal";
 import { SiteFooter } from "@/components/uptime/SiteFooter";
 import { ClientReadsShowcase } from "@/components/uptime/ClientReadsShowcase";
@@ -249,6 +250,10 @@ export default function Landing() {
                   <Eye className="h-4 w-4" aria-hidden="true" />
                   Voir ce que lit un client
                 </a>
+              </div>
+
+              <div className="animate-rise" style={{ animationDelay: "300ms" }}>
+                <HeroProbe />
               </div>
 
               <p

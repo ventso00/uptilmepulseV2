@@ -233,6 +233,36 @@ export const monitorCheckResponseSchema = z.object({
   check: manualCheckResultSchema.nullable(),
 });
 
+/**
+ * Anonymous single-shot probe answered on the landing page. It is deliberately
+ * its own contract: it exposes raw phase timings and never an incident, because
+ * one measurement proves nothing about a service's history.
+ */
+export const diagnosticResponseSchema = z.object({
+  url: z.string(),
+  isUp: z.boolean(),
+  statusCode: z.number().nullable(),
+  responseTimeMs: z.number().nullable(),
+  classification: checkClassificationSchema,
+  errorMessage: z.string().nullable(),
+  phases: z
+    .object({
+      dnsMs: z.number().nullable(),
+      tcpMs: z.number().nullable(),
+      tlsMs: z.number().nullable(),
+      ttfbMs: z.number().nullable(),
+    })
+    .nullable(),
+  certificate: z
+    .object({
+      issuer: z.string(),
+      subject: z.string(),
+      validTo: dateString.nullable(),
+    })
+    .nullable(),
+});
+export type DiagnosticResult = z.infer<typeof diagnosticResponseSchema>;
+
 export const dashboardSummarySchema = z.object({
   totalMonitors: z.number(),
   upMonitors: z.number(),

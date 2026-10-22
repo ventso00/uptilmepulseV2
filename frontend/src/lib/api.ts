@@ -5,6 +5,7 @@ import {
   authUserResponseSchema,
   channelsResponseSchema,
   dashboardResponseSchema,
+  diagnosticResponseSchema,
   historyResponseSchema,
   incidentsResponseSchema,
   monitorCheckResponseSchema,
@@ -248,6 +249,12 @@ export const api = {
   runCheck: (id: number) =>
     request(`/api/monitors/${id}/check`, monitorCheckResponseSchema, {
       method: "POST",
+    }),
+  /** Anonymous one-shot probe from the landing page; no session, no monitor. */
+  diagnose: (url: string) =>
+    request("/api/diagnostic", diagnosticResponseSchema, {
+      method: "POST",
+      body: JSON.stringify({ url }),
     }),
   channels: () => request("/api/notification-channels", channelsResponseSchema),
   createChannel: (body: {
