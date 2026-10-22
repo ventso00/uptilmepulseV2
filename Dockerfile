@@ -16,7 +16,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# RUN pnpm build  # Build skipped: dist/ already present from previous build
+RUN pnpm build
 
 # --- runtime ----------------------------------------------------------------
 FROM node:22-bookworm-slim AS runtime
