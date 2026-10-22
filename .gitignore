@@ -120,3 +120,8 @@ client/public/manus-routes.json
 
 # Local screenshot scratch from design debugging, not source.
 /hero-check/
+
+# Netlify CLI link state (holds the site id; never commit it).
+.netlify/
+
+.vercel

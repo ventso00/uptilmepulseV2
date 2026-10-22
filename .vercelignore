@@ -1,0 +1,8 @@
+.env
+*.log
+.vercel
+.git
+hero-check
+documents
+docs
+coverage

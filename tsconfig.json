@@ -1,5 +1,10 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*", "*.config.ts"],
+  "include": [
+    "frontend/src/**/*",
+    "shared/**/*",
+    "backend/**/*",
+    "*.config.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"],
   "compilerOptions": {
     "target": "ES2022",
@@ -17,7 +22,7 @@
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"],
+      "@/*": ["./frontend/src/*"],
       "@shared/*": ["./shared/*"]
     }
   }
