@@ -347,15 +347,22 @@ licence GitHub Advanced Security sur un dépôt privé.
 
 ### Identité des commits
 
-Les huit commits de la branche portent `Ventso <narindraranjal4hy@gmail.com>`,
-lu dans `git config user.name` et `user.email` sur ce poste. L'adresse du
-compte propriétaire inscrite dans le code et dans la documentation est
-`rajaomanjatoventso@gmail.com` (`server/auth/owner.ts`). GitHub rattache un
-commit au compte qui a vérifié l'adresse de l'auteur : sans ajout de
-`narindraranjal4hy@gmail.com` au compte, les commits arriveront sans lien avec
-le profil. À trancher avant la première poussée, soit en déclarant l'adresse
-sur le compte, soit en changeant `git config user.email` pour la suite —
-l'histoire déjà écrite ne se réécrit pas ici.
+Les trente commits portent aujourd'hui `Ventso <rajaomanjatoventso@gmail.com>`,
+l'adresse du compte propriétaire, celle que `git config user.email` indique déjà
+en local et en global. Il y a eu deux adresses pendant le développement : dix-sept
+commits signaient `Ventso <narindraranjal4hy@gmail.com>`, réglée sur ce poste au
+démarrage du projet. GitHub rattache un commit au compte qui a vérifié son adresse
+d'auteur : le compte `Narindra0` est donc apparu dans la section « Contributors »
+du dépôt, à côté de `ventso00`.
+
+Aucun réglage ne masque un contributeur — cette liste est dérivée des métadonnées
+de commits, pas d'une table qu'on éditerait. La seule voie était de réécrire les
+champs `author` et `committer` sur `main` (`git filter-branch --env-filter`, sans
+toucher à un octet de fichier), puis de pousser avec `--force-with-lease`.
+Vérifications après réécriture : `git diff backup/pre-rewrite-20261023 main` est
+vide, les trente commits gardent leurs messages et leurs dates, une seule adresse
+subsiste. La branche locale `backup/pre-rewrite-20261023` conserve l'histoire
+d'avant réécriture et n'est pas poussée. Le SHA `0056aa2` est devenu `978750a`.
 
 ### Ce que la poussée n'emportera pas
 
