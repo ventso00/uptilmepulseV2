@@ -26,9 +26,17 @@ import { AppShell } from "@/components/uptime/AppShell";
 import { ErrorState, FullLoader } from "@/components/uptime/PageState";
 import { ConfirmDialog } from "@/components/uptime/ConfirmDialog";
 import { useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { INCIDENT_RULES } from "@shared/contracts";
 
 export default function Settings() {
+  useRouteSeo({
+    title: "Paramètres",
+    description:
+      "Compte, canaux de notification Telegram et page de statut publique.",
+    path: "/settings",
+    noindex: true,
+  });
   const [, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);

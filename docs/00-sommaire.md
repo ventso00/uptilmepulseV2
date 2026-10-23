@@ -89,6 +89,10 @@ ce qui a été corrigé et sur quelle mesure.
   digest, auto-tests.
 - `plans-and-billing.md` — les paliers, leur application, l'absence de
   facturation réelle.
+- `seo.md` — ce que le dépôt publie pour un moteur de recherche : le `<head>`
+  résolu au build, `robots.txt` et `sitemap.xml` servis comme des routes, le
+  par-route client et sa limite de prévisualisation, le poids mesuré de la page
+  d'entrée.
 
 ### `03-infrastructure/`
 

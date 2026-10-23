@@ -7,11 +7,18 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { FormEvent, useState } from "react";
 import { api, errorMessage, UnauthorizedError } from "@/lib/api";
 import { LogoWordmark } from "@/components/uptime/Logo";
 
 export default function Login() {
+  useRouteSeo({
+    title: "Connexion",
+    description:
+      "Connectez-vous à UptimePulse pour retrouver l'état, le temps de réponse et les incidents de vos sites et APIs.",
+    path: "/login",
+  });
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

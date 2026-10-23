@@ -18,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Logo } from "@/components/uptime/Logo";
+import { useRouteSeo } from "@/lib/seo";
 import { CountUp } from "@/components/uptime/CountUp";
 import { ProductPreview } from "@/components/uptime/ProductPreview";
 import { HeroCircuit } from "@/components/uptime/HeroCircuit";
@@ -77,6 +78,12 @@ function countLabel(count: number, singular: string, plural: string): string {
 }
 
 export default function Landing() {
+  useRouteSeo({
+    title: "UptimePulse — surveillance de disponibilité de sites et d'APIs",
+    description:
+      "Surveillance HTTP de vos sites et APIs : vérification toutes les 5 minutes, diagnostic DNS, TCP, TLS, certificat, alertes Telegram et page de statut publique.",
+    path: "/",
+  });
   // Read from the same rows the console edits, so the page cannot advertise a
   // tier the server refuses to grant.
   const [plans, setPlans] = useState<PlanPublic[]>([]);

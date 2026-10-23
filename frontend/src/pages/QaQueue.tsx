@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import {
   api,
   errorMessage,
@@ -108,6 +109,12 @@ function Panel({
 }
 
 export default function QaQueue() {
+  useRouteSeo({
+    title: "File de signalements",
+    description: "Traitement interne des signalements qualité et support.",
+    path: "/qa",
+    noindex: true,
+  });
   const [, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [overview, setOverview] = useState<QaOverviewResponse | null>(null);

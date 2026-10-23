@@ -4,6 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { publicPlatformScript } from "./backend/_core/publicConfig";
+import {
+  applySeoTags,
+  isIndexable,
+  resolveSiteUrl,
+} from "./frontend/src/lib/seoTags";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -171,7 +176,36 @@ function vitePluginPublicPlatformConfig(): Plugin {
   };
 }
 
+/**
+ * Fixes the absolute URLs of the shared `<head>` at build time: canonical,
+ * og:url, og:image and the JSON-LD identifiers. A SPA cannot hand those to a
+ * preview robot that never runs JavaScript, and a domain written by hand in
+ * index.html outlives its own deploy.
+ */
+function vitePluginSeoTags(): Plugin {
+  return {
+    name: "uptimepulse-seo-tags",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        const siteUrl = resolveSiteUrl(process.env);
+        if (!siteUrl) {
+          this.warn(
+            "No public origin (SITE_URL or VERCEL_PROJECT_PRODUCTION_URL): " +
+              "the absolute canonical and Open Graph tags are dropped from this build."
+          );
+        }
+        return applySeoTags(html, {
+          siteUrl,
+          indexable: isIndexable(process.env, siteUrl),
+        });
+      },
+    },
+  };
+}
+
 const plugins = [
+  vitePluginSeoTags(),
   vitePluginPublicPlatformConfig(),
   react(),
   tailwindcss(),
@@ -193,13 +227,15 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: false,
-    // Split the vendor graph so a UI change does not invalidate ~900 kB of
-    // cached vendor code, and so the charting payload is isolated.
     rollupOptions: {
       output: {
+        // `react` and `zod` are shared by every route, so they stay named
+        // chunks that a UI change does not invalidate. The charting library is
+        // deliberately absent: naming it here dragged it back into the entry's
+        // static imports, which preloaded ~400 kB on the landing page. The
+        // dynamic route imports in App.tsx isolate it on their own.
         manualChunks: {
           react: ["react", "react-dom", "wouter"],
-          charts: ["recharts"],
           forms: ["zod"],
         },
       },

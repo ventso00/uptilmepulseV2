@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useRoute } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import {
   ApiError,
   api,
@@ -116,6 +117,12 @@ function ProgressRail({ status }: { status: QaTicketStatus }) {
 export default function SupportTicket() {
   const [, params] = useRoute("/support/:token");
   const token = params?.token ?? "";
+  useRouteSeo({
+    title: "Suivi de votre signalement",
+    description: "État d'avancement et échanges sur un ticket de support.",
+    path: `/support/${token}`,
+    noindex: true,
+  });
   const [data, setData] = useState<QaPublicTicketResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [invalidLink, setInvalidLink] = useState(false);

@@ -1,8 +1,15 @@
 import { Compass, Home } from "lucide-react";
 import { useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { Logo } from "@/components/uptime/Logo";
 
 export default function NotFound() {
+  useRouteSeo({
+    title: "Page introuvable",
+    description: "Cette adresse ne correspond à aucune page de UptimePulse.",
+    path: "/404",
+    noindex: true,
+  });
   const [, setLocation] = useLocation();
 
   return (

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import {
   ArrowRight,
   CircleCheck,
@@ -703,6 +704,17 @@ export default function PublicStatus() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+
+  useRouteSeo({
+    title: notFound
+      ? "Page de statut introuvable"
+      : (data?.title ?? "Page de statut"),
+    description:
+      data?.description ??
+      "État, temps de réponse et incidents des services suivis sur cette page de statut.",
+    path: `/status/${slug}`,
+    noindex: notFound,
+  });
 
   const load = useCallback(async () => {
     if (!slug) return;

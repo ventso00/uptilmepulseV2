@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { toast } from "sonner";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -47,6 +48,13 @@ import {
 import { useMyPlan } from "@/hooks/useMyPlan";
 
 export default function Dashboard() {
+  useRouteSeo({
+    title: "Tableau de bord",
+    description:
+      "Vos services surveillés, leur état actuel et leur historique de disponibilité.",
+    path: "/dashboard",
+    noindex: true,
+  });
   const [, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<DashboardData | null>(null);

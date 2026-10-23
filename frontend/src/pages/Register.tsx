@@ -1,10 +1,17 @@
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { FormEvent, useState } from "react";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { AuthLayout } from "./Login";
 
 export default function Register() {
+  useRouteSeo({
+    title: "Créer un compte",
+    description:
+      "Créez votre compte UptimePulse : 3 moniteurs gratuits, vérification à partir de 5 minutes, alertes Telegram et page de statut publique.",
+    path: "/register",
+  });
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

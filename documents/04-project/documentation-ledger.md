@@ -363,3 +363,49 @@ d'état viennent donc de la lecture du code et des 223 tests, pas d'un trafic
 observé. Les six captures d'écrans d'exploitation (`/dashboard`, `/monitors/:id`,
 `/settings`, `/qa`, `/console`, `/login` en régime courant) restent à produire :
 elles exigent le compte du créateur.
+
+## La visibilité du dépôt, et les cinq affirmations fausses qu'il portait
+
+`docs/02-technical/seo.md` a été écrite pour ce correctif, qui a commencé comme
+une relecture documentaire du `<head>` et s'est révélé être cinq défauts de code
+publiants :
+
+- **Le domaine publié n'existait pas.** `og:url`, la ligne `Sitemap:` de
+  `robots.txt` et les six `<loc>` du plan portaient
+  `https://uptilmepulsev2.vercel.app`, alors que la production est
+  `https://uptimepulse-liard.vercel.app`. Un crawl dirigé vers une adresse qui
+  n'appartient à personne n'est pas neutre : il disperse les signaux.
+- **Le plan du site listait des motifs, pas des URL** : `/status/:slug` et
+  `/monitors/:id` en littéral, plus un `/dashboard` que le `robots.txt` interdisait
+  sur le même dépôt. Deux instructions contraires, aucune des deux applicable.
+- **`og:image` valait `favicon.svg`** : aucun robot de prévisualisation
+  n'affiche un SVG, donc tout partage partait sans visuel.
+- **Aucun `canonical`, aucune donnée structurée, aucune balise par route** : les
+  onze routes livraient le titre du landing, et `meta keywords` — mort depuis
+  2009 — occupait la place.
+- **Le landing téléchargeait 397,53 kB de graphiques qu'il n'affiche pas**, à
+  cause d'imports statiques et d'un `manualChunks` qui ramenait recharts dans le
+  point d'entrée.
+
+Le correctif est décrit page par page dans `seo.md` ; les deux fichiers statiques
+`frontend/public/robots.txt` et `frontend/public/sitemap.xml` sont supprimés et
+devenus des routes (`backend/seo/routes.ts:25`), ce qui est la seule manière de
+publier des URL justes quand le domaine peut changer sans commit.
+
+**Mesuré, pas déduit.** Les 25 tests ajoutés (`seoTags` 10, `seo` 5, `sitemap` 6,
+`routes` 4) portent la suite à 252. Une instance de production lancée localement
+(`NODE_ENV=production node dist/index.js`) a répondu `200` sur `/robots.txt` et
+`/sitemap.xml` avec l'origine de la requête, `200 image/png` sur
+`/og-cover.png`, et `400` sur un `Host` forgé. Dans un navigateur, `/dashboard`
+— renvoyé vers `/login` sans session — portait `canonical …/login` et le titre
+« Connexion — UptimePulse » ; `/status/exemple-inexistant` portait bien
+`noindex,nofollow`. Le build donne un point d'entrée à 354,12 kB (108,94 kB
+gzip) contre 517,41 kB, et deux `modulepreload` au lieu de trois.
+
+**Ce qui n'est pas vérifié ici.** Aucune page de statut n'existe en base, donc la
+branche du plan qui liste `status_pages.slug` est testée sur des lignes simulées,
+pas sur un trafic réel. Aucun crawl de Google ni de robot de prévisualisation n'a
+été observé après déploiement : la correction est prouvée dans le HTML, pas dans
+le classement. Et le point 3 de `seo.md` reste ouvert — un lien vers une page de
+statut partagera le titre générique tant que ce HTML ne sera pas servi par la
+fonction.

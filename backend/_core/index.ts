@@ -18,6 +18,7 @@ import { registerNotificationRoutes } from "../notifications/routes";
 import { registerStatusPageRoutes } from "../statuspages/routes";
 import { registerQaRoutes } from "../qa/routes";
 import { registerAdminRoutes, registerPlanRoutes } from "../admin/routes";
+import { registerSeoRoutes } from "../seo/routes";
 import { ensureHeartbeatJob } from "../scheduler/register";
 import { startInternalScheduler } from "../scheduler/loop";
 import { errorHandler, notFoundHandler, asyncHandler } from "./http";
@@ -96,6 +97,9 @@ export async function createApp(
   registerQaRoutes(app);
   registerPlanRoutes(app);
   registerAdminRoutes(app);
+  // /robots.txt and /sitemap.xml are origin-served files, so they register
+  // before the SPA fallback in serveStatic, which would answer an index.html.
+  registerSeoRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",

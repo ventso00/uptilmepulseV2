@@ -8,49 +8,58 @@
     />
     <meta name="theme-color" content="#F4F3EE" />
 
-    <!-- Balises SEO -->
+    <!-- Absolute URLs come from %SITE_URL%: the seoTags plugin in
+         vite.config.ts resolves it at build time and removes any tag left
+         unresolved. A domain hardcoded here always ends up pointing at an
+         address that no longer exists, which misleads the crawl worse than no
+         tag at all. -->
+    <title>
+      UptimePulse — surveillance de disponibilité de sites et d'APIs
+    </title>
     <meta
       name="description"
-      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique (DNS, TCP, TLS, certificats), historique, incidents 3/2, notifications Telegram, pages de statut publiques, tableaux de bord et paliers freemium."
+      content="Surveillance HTTP de vos sites et APIs : vérification toutes les 5 minutes, diagnostic DNS, TCP, TLS, certificat, alertes Telegram et page de statut publique."
     />
-    <meta
-      name="keywords"
-      content="uptime monitoring, site monitoring, api monitoring, surveillance site web, monitoring de disponibilité, vérification HTTP, alertes telegram, page de statut, observabilité, paliers freemium"
-    />
+    <link rel="canonical" href="%SITE_URL%/" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
 
-    <!-- Open Graph / Facebook -->
+    <!-- Open Graph: preview robots run no JavaScript, so neither the title nor
+         the image can be set by the client after load. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="UptimePulse" />
+    <meta property="og:locale" content="fr_FR" />
     <meta
       property="og:title"
-      content="UptimePulse — Surveillance de sites et APIs"
+      content="UptimePulse — surveillance de sites et APIs"
     />
     <meta
       property="og:description"
-      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique (DNS, TCP, TLS, certificats), historique, incidents 3/2, notifications Telegram, pages de statut publiques."
+      content="UptimePulse vérifie vos sites et APIs toutes les 5 minutes, distingue une panne DNS d'une erreur TLS, confirme un incident après trois échecs et publie l'état sur une page de statut."
     />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://uptilmepulsev2.vercel.app" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-cover.png" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
     <meta
-      property="og:image"
-      content="https://uptilmepulsev2.vercel.app/favicon.svg"
+      property="og:image:alt"
+      content="Carte UptimePulse : titre « Vos sites et vos APIs, avec un signal clair », quatre puces de fonctionnalités et une frise d'historique de mesures."
     />
-    <meta property="og:locale" content="fr_FR" />
-    <meta property="og:site_name" content="UptimePulse" />
 
-    <!-- Twitter Cards -->
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="UptimePulse — Surveillance de sites et APIs"
+      content="UptimePulse — surveillance de sites et APIs"
     />
     <meta
       name="twitter:description"
-      content="UptimePulse — surveillance automatique de vos sites et APIs. Vérification périodique, détection d'incidents, analyse technique, notifications Telegram, pages de statut publiques."
+      content="Vérification toutes les 5 minutes, diagnostic DNS, TCP, TLS et certificat, incidents confirmés, alertes Telegram et pages de statut publiques."
     />
+    <meta name="twitter:image" content="%SITE_URL%/og-cover.png" />
     <meta
-      name="twitter:image"
-      content="https://uptilmepulsev2.vercel.app/favicon.svg"
+      name="twitter:image:alt"
+      content="Carte UptimePulse : titre du service, quatre puces de fonctionnalités et une frise d'historique de mesures."
     />
-    <meta name="twitter:creator" content="@ventso00" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -60,7 +69,61 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
-    <title>UptimePulse — Signal clair sur vos services</title>
+
+    <!-- The free tier described here is the one the server enforces
+         (shared/contracts.ts: FREE_PLAN and INCIDENT_RULES): 3 monitors,
+         300 s minimum interval, an incident after 3 failures, recovered after
+         2 successes. Nothing that is not already true in the code. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "%SITE_URL%/#organization",
+            "name": "UptimePulse",
+            "url": "%SITE_URL%/",
+            "logo": "%SITE_URL%/favicon.svg",
+            "description": "Éditeur d'un service de surveillance de disponibilité pour sites et APIs, avec diagnostic réseau et pages de statut publiques."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "%SITE_URL%/#website",
+            "url": "%SITE_URL%/",
+            "name": "UptimePulse",
+            "inLanguage": "fr-FR",
+            "publisher": { "@id": "%SITE_URL%/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "%SITE_URL%/#application",
+            "name": "UptimePulse",
+            "url": "%SITE_URL%/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "fr-FR",
+            "description": "Surveillance HTTP périodique de sites et d'APIs avec diagnostic DNS, TCP, TLS et certificat, confirmation d'incident et notifications Telegram.",
+            "featureList": [
+              "Vérification HTTP à intervalle réglable à partir de 5 minutes",
+              "Diagnostic séparant DNS, TCP, TLS, certificat et code HTTP",
+              "Incident confirmé après 3 échecs consécutifs, rétabli après 2 succès",
+              "Historique des mesures et temps de réponse par service",
+              "Notifications Telegram",
+              "Page de statut publique partageable"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "name": "Free",
+              "price": "0",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/InStock",
+              "url": "%SITE_URL%/register"
+            },
+            "publisher": { "@id": "%SITE_URL%/#organization" }
+          }
+        ]
+      }
+    </script>
   </head>
 
   <body>

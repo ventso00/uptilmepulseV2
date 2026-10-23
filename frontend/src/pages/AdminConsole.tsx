@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { toast } from "sonner";
 import {
   CreditCard,
@@ -85,6 +86,12 @@ const numericFields: {
 ];
 
 export default function AdminConsole() {
+  useRouteSeo({
+    title: "Console d'administration",
+    description: "Comptes, formules et exploitation du service.",
+    path: "/console",
+    noindex: true,
+  });
   const [, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);

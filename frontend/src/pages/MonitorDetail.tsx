@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
+import { useRouteSeo } from "@/lib/seo";
 import { useCallback, useEffect, useState } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
@@ -47,6 +48,13 @@ import {
 
 export default function MonitorDetail() {
   const [, params] = useRoute("/monitors/:id");
+  useRouteSeo({
+    title: "Détail du moniteur",
+    description:
+      "Diagnostic, historique et temps de réponse de ce service surveillé.",
+    path: `/monitors/${params?.id ?? ""}`,
+    noindex: true,
+  });
   const [, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [monitor, setMonitor] = useState<Monitor | null>(null);
